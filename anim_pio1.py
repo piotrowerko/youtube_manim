@@ -3,6 +3,9 @@
 # highier quality: 
 # manim -p anim_pio1.py PointMovingOnShapes
 
+# Tutorial:
+#  https://www.youtube.com/watch?v=KHGoFDB-raE&ab_channel=BrianAmedee
+
 from manim import *
 
 
@@ -62,9 +65,9 @@ class SineCurveUnitCircle(Scene):
     # contributed by heejin_park, https://infograph.tistory.com/230
     def construct(self):
         self.show_axis()
-        self.show_circle()
-        self.move_dot_and_draw_curve()
-        self.wait()
+        # self.show_circle()
+        # self.move_dot_and_draw_curve()
+        # self.wait()
 
     def show_axis(self):
         x_start = np.array([-6,0,0])

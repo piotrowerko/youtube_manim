@@ -1,0 +1,6 @@
+# This file is used internally by FFMPEG.
+file 'file:C:/Python/pyth_codes_pio/youtube_manim/media/videos/anim_pio1/1080p60/partial_movie_files/PointMovingOnShapes/1413466013_2471312405_105324400.mp4'
+file 'file:C:/Python/pyth_codes_pio/youtube_manim/media/videos/anim_pio1/1080p60/partial_movie_files/PointMovingOnShapes/1672018281_3574166500_2758866461.mp4'
+file 'file:C:/Python/pyth_codes_pio/youtube_manim/media/videos/anim_pio1/1080p60/partial_movie_files/PointMovingOnShapes/1672018281_3027675647_1246660410.mp4'
+file 'file:C:/Python/pyth_codes_pio/youtube_manim/media/videos/anim_pio1/1080p60/partial_movie_files/PointMovingOnShapes/1672018281_1025085529_2758866461.mp4'
+file 'file:C:/Python/pyth_codes_pio/youtube_manim/media/videos/anim_pio1/1080p60/partial_movie_files/PointMovingOnShapes/1672018281_329969645_11481737.mp4'
