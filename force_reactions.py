@@ -11,6 +11,7 @@
 from manim import *
 import numpy as np
 
+
 class Beam(Scene):
     def construct(self):
         #self._show_beam(-2, 2)
@@ -28,7 +29,7 @@ class Beam(Scene):
         #self.play(GrowFromCenter(tria_2),run_time=3)
         self.wait()
 
-    def _show_beam(self, x1, x2):
+    def _show_beam(self, x1, x2, *args):
         x_start = np.array([x1, 2, 0])
         x_end = np.array([x2, 2, 0])
         beam = Line(x_start, x_end)
