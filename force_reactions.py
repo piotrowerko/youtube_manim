@@ -14,22 +14,28 @@ import numpy as np
 
 class Beam(Scene):
     def construct(self):
-        #self._show_beam(-2, 2)
         x_init1 = -5
         x_init2 = 5
-        beam = self._show_beam(x_init1, x_init2)
-        #self.play(GrowFromCenter(beam), runtime=0.02)
+        r_t = 0.5
+        beam = self._draw_line(x_init1, x_init2)
         self.wait()
-        self.play(GrowFromCenter(beam),run_time=3)
+        self.play(GrowFromCenter(beam),run_time=r_t)
         self.wait()
         tria_1, tria_2, slide = self._add_supports(x_init1, x_init2)
         self.play(GrowFromEdge(tria_1, UP), 
                   GrowFromEdge(tria_2, UP), 
-                  GrowFromCenter(slide), run_time=3)
-        #self.play(GrowFromCenter(tria_2),run_time=3)
+                  GrowFromCenter(slide), run_time=r_t)
+        force_load = Arrow(np.array([-1, 3.5, 0]), 
+                           np.array([-1, 1.8, 0]), 
+                           color=GOLD, 
+                           max_stroke_width_to_length_ratio=5)
+        self.play(GrowArrow(force_load), run_time=r_t)
+        reactions = self._add_reactions(x_init1, x_init2)
+        self.play(GrowArrow(reactions[0]), run_time=r_t)
+        self.play(GrowArrow(reactions[1]), run_time=r_t)
         self.wait()
 
-    def _show_beam(self, x1, x2, *args):
+    def _draw_line(self, x1, x2, *args):
         x_start = np.array([x1, 2, 0])
         x_end = np.array([x2, 2, 0])
         beam = Line(x_start, x_end)
@@ -44,9 +50,20 @@ class Beam(Scene):
         tria_1.move_to(x_start, UP)
         tria_2.move_to(x_end, UP)
         vector = np.array([0,-0.9,0])
-        slide = self._show_beam(x_end[0] - 0.5, x_end[0] + 0.5)
+        slide = self._draw_line(x_end[0] - 0.5, x_end[0] + 0.5)
         slide.shift(vector)
         return tria_1, tria_2, slide
+    
+    def _add_reactions(self, x1, x2):
+        vert_reaction_a = Arrow(np.array([x1, 0, 0]), 
+                                np.array([x1, 1.5, 0]), 
+                                color=RED,
+                                max_stroke_width_to_length_ratio=5)
+        vert_reaction_b = Arrow(np.array([x2, 0, 0]), 
+                                np.array([x2, 1.2, 0]), 
+                                color=RED,
+                                max_stroke_width_to_length_ratio=7)
+        return vert_reaction_a, vert_reaction_b
         
 
 def main():
