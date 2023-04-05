@@ -31,9 +31,11 @@ class Beam(Scene):
                            max_stroke_width_to_length_ratio=5)
         self.play(GrowArrow(force_load), run_time=r_t)
         reactions = self._add_reactions(x_init1, x_init2)
-        self.play(GrowArrow(reactions[0]), run_time=r_t)
-        self.play(GrowArrow(reactions[1]), run_time=r_t)
+        for i in reactions:
+            self.play(GrowArrow(i), run_time=r_t)
         self.wait()
+        equation = self._add_formula()
+        self.play(Write(equation))
 
     def _draw_line(self, x1, x2, *args):
         x_start = np.array([x1, 2, 0])
@@ -63,7 +65,18 @@ class Beam(Scene):
                                 np.array([x2, 1.2, 0]), 
                                 color=RED,
                                 max_stroke_width_to_length_ratio=7)
-        return vert_reaction_a, vert_reaction_b
+        horiz_reaction_a = Arrow(np.array([x1-1.5, 2, 0]), 
+                                np.array([x1, 2, 0]), 
+                                color=RED,
+                                max_stroke_width_to_length_ratio=5)
+        return vert_reaction_a, vert_reaction_b, horiz_reaction_a
+    
+    def _add_formula(self):
+        equation = MathTex(
+            r"e^x = x^0 + x^1 + \frac{1}{2} x^2 + \frac{1}{6} x^3 + \cdots + \frac{1}{n!} x^n + \cdots",
+        )
+        equation.set_color_by_tex("x", YELLOW)
+        return equation
         
 
 def main():
