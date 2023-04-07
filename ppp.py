@@ -12,12 +12,16 @@ class SquareToCircle(Scene):
         self.play(Create(square))
         self.play(Transform(square, circle))
         self.play(FadeOut(square))
+    
         
 
 
 def main():
-    moje_kola = SquareToCircle()
-    moje_kola.construct()
+    ppp = {'aaa': 1, 'bbb': 2}
+    # moje_kola = SquareToCircle()
+    # moje_kola.construct()
+    print(ppp.items())
+    print(take(1, ppp.items()))
 
 
 if __name__ == '__main__':
