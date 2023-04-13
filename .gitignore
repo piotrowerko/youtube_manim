@@ -9,6 +9,7 @@ __pycache__/
 # manim media:
 media/
 .media/
+/media_dir.txt
 
 # Distribution / packaging
 .Python
