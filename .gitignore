@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# manim media:
+media/
+.media/
+
 # Distribution / packaging
 .Python
 build/
