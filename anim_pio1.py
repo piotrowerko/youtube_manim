@@ -3,6 +3,9 @@
 # highier quality: 
 # manim -p anim_pio1.py PointMovingOnShapes
 
+# manim -p anim_pio1.py BraceAnnotation
+
+
 # Tutorial:
 #  https://www.youtube.com/watch?v=KHGoFDB-raE&ab_channel=BrianAmedee
 
@@ -59,7 +62,8 @@ class BraceAnnotation(Scene):
         b1text = b1.get_text("Horizontal distance")
         b2 = Brace(line, direction=line.copy().rotate(PI / 2).get_unit_vector())
         b2text = b2.get_tex("x-x_1")
-        self.add(line, dot, dot2, b1, b2, b1text, b2text)
+        #self.add(line, dot, dot2, b1, b2, b1text, b2text)
+        self.play(GrowFromCenter(b1))
 
 class SineCurveUnitCircle(Scene):
     # contributed by heejin_park, https://infograph.tistory.com/230
