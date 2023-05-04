@@ -28,7 +28,7 @@ class AnimBeam(Scene):
     STARTING_Y = 2.0
     BEAM_LENGTH = 10.0
     IN_REL_LO_POS = - 0.10
-    ANIM_TIME = 2
+    ANIM_TIME = 0.5
     
     def construct(self):
         x_init1 = np.array([- AnimBeam.BEAM_LENGTH / 2, AnimBeam.STARTING_Y, 0])
@@ -127,7 +127,6 @@ class AnimBeam(Scene):
                               'stroke_width': 2,
                               'color': ORANGE}
         ref_load_line = self._draw_line2(**data_ref_load_line)
-        self.wait()
         self.play(GrowFromPoint(ref_load_line, load_array), run_time=r_t)
         
         # shortening the reference line
@@ -146,10 +145,72 @@ class AnimBeam(Scene):
         brace_all = VGroup(vert_brace2, vert_brace_txt2)
         self.play(brace_all.animate(), run_time=r_t)
         self.wait()
+        
+        # copying the 60% sign to the Rav:
+        vert_brace_txt3 = vert_brace_txt2.copy()
+        self.play(vert_brace_txt3.animate.shift([-4.5,1.0,0]))
+        
+        # calculating the rav reaction:
+        r_a_v_val = MathTex(r"\cdot 10 [kN]", color=YELLOW)
+        r_a_v_val.move_to(x_init1+np.array([-0.4,-2.3,0]))
+        self.play(Write(r_a_v_val))
+        
+        # substituting the 60% value with decimal variable
+        # and adding variable left reaction
+        self.play(FadeOut(vert_brace_txt3))
+        dec_var_left = DecimalNumber(local_height_l * 100, 
+                                        num_decimal_places=0, 
+                                        include_sign=False, 
+                                        unit=r"{\%}")
+        dec_var_left.move_to(x_init1+np.array([-1.6,-2.3,0]))
+        self.play(Write(dec_var_left))
+        dec_react_left = DecimalNumber(local_height_l * 10, 
+                                        num_decimal_places=1, 
+                                        include_sign=False, 
+                                        unit=None)
+        dec_react_left.move_to(x_init1+np.array([-1.8,-1.5,0]))
+        is_equal = MathTex(r"=", color=YELLOW)
+        is_equal.move_to(x_init1+np.array([-1.3,-1.5,0]))
+        self.play(Write(is_equal))
+        self.play(Write(dec_react_left))
+        
+
+        
+        def rb_react_value(mobject):
+            mobject.set_value(AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0])
+            #mobject.next_to(force_load)
+            
+        def left_dim_value(mobject):
+            mobject.set_value(AnimBeam.BEAM_LENGTH / 2 + force_load.get_center()[0])
+            
+        # def right_dim_value(mobject):
+        #     mobject.set_value(AnimBeam.BEAM_LENGTH / 2 + force_load.get_center()[0])
+            
+        # adequately change the left reaction, left dim:
+        dec_react_left.add_updater(rb_react_value)
+        on_screen_dim_l.add_updater(left_dim_value)
+        on_screen_dim_r.add_updater(rb_react_value)
+        # move load and central dimension horizontally:
+        moving_part_hor = VGroup(force_load, 
+                                 load_value,
+                                 dimensions[2], 
+                                 dimensions[3])
+        self.play(moving_part_hor.animate.shift([-3,0,0]))
+        self.wait()
+        # self.play(moving_part_hor.animate.shift([-10,0,0]))
+        # self.wait()
+        # self.play(moving_part_hor.animate.shift([5,0,0]))
+        # self.wait()
+        #dec_var_left = DecimalNumber(60, show_ellipsis=True, num_decimal_places=3,)
 
 
         # DECIMAL UPDATER
         # https://docs.manim.community/en/stable/reference/manim.mobject.text.numbers.DecimalNumber.html
+        
+        # inny świetny przykład decimal updater:
+        # https://docs.manim.community/en/stable/reference/manim.mobject.mobject.Mobject.html#manim.mobject.mobject.Mobject.add_updater
+    
+
         
         
     def _compute_tria_height(self, hor):
