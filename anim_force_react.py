@@ -22,7 +22,6 @@ from manim.mobject.geometry.tips import ArrowTriangleTip,\
 
 from beam import Beam
 
-
 class AnimBeam(Scene):
     
     STARTING_Y = 2.0
@@ -125,7 +124,7 @@ class AnimBeam(Scene):
         data_ref_load_line = {'x1': load_array,
                               'x2': load_array-np.array([0, 4, 0]),
                               'stroke_width': 2,
-                              'color': ORANGE}
+                              'color': WHITE}
         ref_load_line = self._draw_line2(**data_ref_load_line)
         self.play(GrowFromPoint(ref_load_line, load_array), run_time=r_t)
         
@@ -133,10 +132,11 @@ class AnimBeam(Scene):
         local_height_l, local_height_r = self._compute_tria_height(load_array[0])
         ref_load_line2 = ref_load_line.copy()
         ref_load_line2.put_start_and_end_on(load_array - np.array([0, 3, 0]), 
-                                           load_array - np.array([0, 3+local_height_l, 0]))
+                                           load_array - np.array([0, 3 + local_height_l, 0]))
         self.play(ReplacementTransform(ref_load_line, ref_load_line2))
+        self.play(FadeOut(ref_load_line), run_time = 0.1)
         self.wait()
-        
+       
         # adding braces to the intermediate line:
         vert_brace2 = Brace(ref_load_line2, direction=np.array([-1., 0., 0.]))
         a = format(local_height_l * 100, '.0f')
@@ -157,13 +157,13 @@ class AnimBeam(Scene):
         
         # substituting the 60% value with decimal variable
         # and adding variable left reaction
-        self.play(FadeOut(vert_brace_txt3))
         dec_var_left = DecimalNumber(local_height_l * 100, 
                                         num_decimal_places=0, 
                                         include_sign=False, 
                                         unit=r"{\%}")
+        dec_var_left2 = dec_var_left.copy()
         dec_var_left.move_to(x_init1+np.array([-1.6,-2.3,0]))
-        self.play(Write(dec_var_left))
+        self.play(FadeOut(vert_brace_txt3), Write(dec_var_left), run_time=0.01)
         dec_react_left = DecimalNumber(local_height_l * 10, 
                                         num_decimal_places=1, 
                                         include_sign=False, 
@@ -175,7 +175,7 @@ class AnimBeam(Scene):
         self.play(Write(dec_react_left))
         
 
-        
+        # additional values for updater:
         def rb_react_value(mobject):
             mobject.set_value(AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0])
             #mobject.next_to(force_load)
@@ -183,36 +183,66 @@ class AnimBeam(Scene):
         def left_dim_value(mobject):
             mobject.set_value(AnimBeam.BEAM_LENGTH / 2 + force_load.get_center()[0])
             
-        # def right_dim_value(mobject):
-        #     mobject.set_value(AnimBeam.BEAM_LENGTH / 2 + force_load.get_center()[0])
+        def infl_line_val(mobject):
+            mobject.set_value((AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0]) * 10)
+            mobject.next_to(ref_load_line)
+        
+        # to update the load reference line see:
+        # https://docs.manim.community/en/stable/examples.html
+        def change_length_of_load_ref_line(mobject):
+            ref_l_cen = ref_load_line.get_center()
+            length = (AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0]) * 0.1
+            top_array = np.array([0, length - 0.3, 0])
+            mobject.become(Line(ref_l_cen + np.array([0, 0.3 ,0]), ref_l_cen - top_array))
             
         # adequately change the left reaction, left dim:
         dec_react_left.add_updater(rb_react_value)
         on_screen_dim_l.add_updater(left_dim_value)
         on_screen_dim_r.add_updater(rb_react_value)
+        ref_load_line3 = ref_load_line.copy()
+        self.add(ref_load_line3)
+        ref_load_line3.add_updater(change_length_of_load_ref_line)
+        
+        # adding dynamic brace and dynamic %
+        self.play(FadeOut(ref_load_line), FadeOut(ref_load_line2), run_time = 0.1)
+        
+        self.play(FadeOut(brace_all), run_time = 0.1)
+        dec_var_left2.add_updater(infl_line_val)
+
         # move load and central dimension horizontally:
         moving_part_hor = VGroup(force_load, 
                                  load_value,
                                  dimensions[2], 
-                                 dimensions[3])
-        self.play(moving_part_hor.animate.shift([-3,0,0]))
+                                 dimensions[3],
+                                 ref_load_line,
+                                 dec_var_left2)
+        self.play(moving_part_hor.animate.shift([-3,0,0]), run_time=12)
+        self.play(FadeOut(ref_load_line), run_time = 0.01)
         self.wait()
-        # self.play(moving_part_hor.animate.shift([-10,0,0]))
-        # self.wait()
-        # self.play(moving_part_hor.animate.shift([5,0,0]))
-        # self.wait()
-        #dec_var_left = DecimalNumber(60, show_ellipsis=True, num_decimal_places=3,)
-
+        self.wait()
+        rot = Rotate(angl_line,
+               angle=0.03,
+               about_point=np.array([0, AnimBeam.STARTING_Y - 3.5, 0]),
+               rate_func=linear)
+        rot2 = Rotate(angl_line,
+               angle=-0.03,
+               about_point=np.array([0, AnimBeam.STARTING_Y - 3.5, 0]),
+               rate_func=linear)
+        angl_line.set_stroke(width=15)
+    
+        self.play(rot, run_time=r_t)
+        self.play(angl_line.animate.scale(1.1))
+        self.play(angl_line.animate.scale(0.9))
+        self.play(rot2, run_time=r_t)
+        self.wait()
+        self.wait()
 
         # DECIMAL UPDATER
         # https://docs.manim.community/en/stable/reference/manim.mobject.text.numbers.DecimalNumber.html
         
         # inny świetny przykład decimal updater:
         # https://docs.manim.community/en/stable/reference/manim.mobject.mobject.Mobject.html#manim.mobject.mobject.Mobject.add_updater
-    
 
-        
-        
     def _compute_tria_height(self, hor):
         local_height_l = (-hor + 0.5 * AnimBeam.BEAM_LENGTH) / AnimBeam.BEAM_LENGTH
         local_height_r = 1 - local_height_l
