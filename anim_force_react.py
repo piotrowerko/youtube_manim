@@ -102,8 +102,8 @@ class AnimBeam(Scene):
                angle=0.099,
                about_point=np.array([AnimBeam.BEAM_LENGTH / 2, AnimBeam.STARTING_Y - 3, 0]),
                rate_func=linear)
-        self.play(tria_1_.animate.shift([0,-1,0]))
-        self.play(rot, run_time=r_t)
+        self.play(tria_1_.animate.shift([0,-1,0]), run_time=4)
+        self.play(rot, run_time=3)
         
         # add brace for vertical displacement denotation:
         data_for_vert_line = {'x1': x_init1-np.array([0, 3, 0]),
@@ -186,7 +186,10 @@ class AnimBeam(Scene):
         def infl_line_val(mobject):
             mobject.set_value((AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0]) * 10)
             mobject.next_to(ref_load_line)
-        
+            
+        def infl_line_val_stacj(mobject):
+            mobject.set_value((AnimBeam.BEAM_LENGTH / 2 - force_load.get_center()[0]) * 10)
+
         # to update the load reference line see:
         # https://docs.manim.community/en/stable/examples.html
         def change_length_of_load_ref_line(mobject):
@@ -208,6 +211,7 @@ class AnimBeam(Scene):
         
         self.play(FadeOut(brace_all), run_time = 0.1)
         dec_var_left2.add_updater(infl_line_val)
+        dec_var_left.add_updater(infl_line_val_stacj)
 
         # move load and central dimension horizontally:
         moving_part_hor = VGroup(force_load, 
@@ -216,7 +220,7 @@ class AnimBeam(Scene):
                                  dimensions[3],
                                  ref_load_line,
                                  dec_var_left2)
-        self.play(moving_part_hor.animate.shift([-3,0,0]), run_time=12)
+        self.play(moving_part_hor.animate.shift([-3,0,0]), run_time=1)
         self.play(FadeOut(ref_load_line), run_time = 0.01)
         self.wait()
         self.wait()
@@ -232,6 +236,13 @@ class AnimBeam(Scene):
     
         self.play(rot, run_time=r_t)
         self.play(angl_line.animate.scale(1.1))
+        # add plus sign i circle
+        sign_circle = Circle(radius=0.25, color=BLUE_B, fill_opacity=1)
+        sign_circle.move_to(np.array([-6.1,-2.3,0]))
+        plus_sign = MathTex(r"+", color=RED)
+        plus_sign.move_to(np.array([-6.1,-2.3,0]))
+        self.play(GrowFromCenter(sign_circle),run_time=r_t)
+        self.play(Write(plus_sign))
         self.play(angl_line.animate.scale(0.9))
         self.play(rot2, run_time=r_t)
         self.wait()
@@ -407,8 +418,6 @@ class AnimBeam(Scene):
         
     def _moving_load_anim(self, dimensions):
         pass
-    
-    
     
     def construct2(self):
         x_init1 = np.array([- AnimBeam.BEAM_LENGTH / 2, AnimBeam.STARTING_Y, 0])
