@@ -1,5 +1,3 @@
-
-
 class ppp():
     def pio(self):
         self.t = 1
