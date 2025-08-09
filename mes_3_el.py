@@ -44,7 +44,9 @@ class MESStructureScene(Scene):
         max_arrow_len = 1.0
         min_arrow_len = 0.5
         for i in range(n_arrows):
-            t = i / (n_arrows - 1)
+            # Avoid placing arrows exactly at the endpoints so the last one does not stick out
+            edge_margin = 0.06
+            t = edge_margin + (1 - 2 * edge_margin) * (i / (n_arrows - 1))
             base_point = guide_line.point_from_proportion(t)
             length = interpolate(max_arrow_len, min_arrow_len, t)
             # Strzałki kończą się dokładnie na górnej krawędzi struktury
@@ -59,8 +61,8 @@ class MESStructureScene(Scene):
         self.play(LaggedStartMap(Create, arrows, lag_ratio=0.1))
 
         # Load magnitude labels
-        label_left = MathTex(r"16\,\text{kN/m}").next_to(arrows[0], LEFT, buff=0.2)
-        label_right = MathTex(r"8\,\text{kN/m}").next_to(arrows[-1], RIGHT, buff=0.2)
+        label_left = MathTex(r"16\,\text{kN/m}").scale(0.75).next_to(arrows[0], LEFT, buff=0.2)
+        label_right = MathTex(r"8\,\text{kN/m}").scale(0.75).next_to(arrows[-1], RIGHT, buff=0.2)
         self.play(FadeIn(label_left), FadeIn(label_right))
 
         # ----- Fixed support at the bottom edge (0;0) – (2;0) -----
@@ -126,6 +128,81 @@ class MESStructureScene(Scene):
         text_right = MathTex(r"2\,\text{m}").scale(0.7).next_to(dim_right, RIGHT, buff=0.15)
         dims.add(dim_right, text_right)
 
+        # ----- Dashed extension lines connecting dimensions to the geometry -----
+        extension_lines = VGroup()
+
+        # Bottom (0,0)–(2,0) → dim_bottom (vertical dashed lines)
+        y_bottom_dim = dim_bottom.get_start()[1]
+        ext_b_left = DashedLine(
+            sup_start,
+            sup_start + (y_bottom_dim - sup_start[1]) * UP,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        ext_b_right = DashedLine(
+            sup_end,
+            sup_end + (y_bottom_dim - sup_end[1]) * UP,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        extension_lines.add(ext_b_left, ext_b_right)
+
+        # Top (2,5)–(4,5) → dim_top (vertical dashed lines)
+        y_top_dim = dim_top.get_start()[1]
+        ext_t_left = DashedLine(
+            start,
+            start + (y_top_dim - start[1]) * UP,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        ext_t_right = DashedLine(
+            end,
+            end + (y_top_dim - end[1]) * UP,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        extension_lines.add(ext_t_left, ext_t_right)
+
+        # Left vertical (x=0, y=0..3) → dim_left (horizontal dashed lines)
+        x_left_dim = dim_left.get_start()[0]
+        left_top_m = raw_pts_m[5]  # (0,3)
+        p_left_bottom = sup_start  # (0,0)
+        p_left_top = ORIGIN_SHIFT + M_TO_UNIT * RIGHT * left_top_m[0] + M_TO_UNIT * UP * left_top_m[1]
+        ext_l_bottom = DashedLine(
+            p_left_bottom,
+            p_left_bottom + (x_left_dim - p_left_bottom[0]) * RIGHT,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        ext_l_top = DashedLine(
+            p_left_top,
+            p_left_top + (x_left_dim - p_left_top[0]) * RIGHT,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        extension_lines.add(ext_l_bottom, ext_l_top)
+
+        # Right vertical (x=4, y=3..5) → dim_right (horizontal dashed lines)
+        x_right_dim = dim_right.get_start()[0]
+        p_right_bottom = ORIGIN_SHIFT + M_TO_UNIT * RIGHT * 4 + M_TO_UNIT * UP * 3
+        p_right_top = end  # (4,5)
+        ext_r_bottom = DashedLine(
+            p_right_bottom,
+            p_right_bottom + (x_right_dim - p_right_bottom[0]) * RIGHT,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        ext_r_top = DashedLine(
+            p_right_top,
+            p_right_top + (x_right_dim - p_right_top[0]) * RIGHT,
+            dash_length=0.08,
+            stroke_width=1,
+        )
+        extension_lines.add(ext_r_bottom, ext_r_top)
+
+        # Show extension lines before the dimension arrows/texts
+        self.play(LaggedStartMap(Create, extension_lines, lag_ratio=0.05))
+
         # Animuj linie wymiarowe i teksty osobno dla lepszej kontroli
         dimension_lines = VGroup()
         dimension_texts = VGroup()
@@ -140,6 +217,67 @@ class MESStructureScene(Scene):
         self.play(LaggedStartMap(Create, dimension_lines, lag_ratio=0.1))
         # Potem pokaż teksty z opisami
         self.play(LaggedStartMap(FadeIn, dimension_texts, lag_ratio=0.1))
+
+        # ----- Stage 2: minimize and move the whole drawing to top-left -----
+        original_group = VGroup(
+            poly,
+            mat_text,
+            arrows,
+            label_left,
+            label_right,
+            base_line,
+            hatch,
+            dims,
+            extension_lines,
+        )
+
+        self.play(
+            original_group.animate
+            .scale(0.5)
+            .to_edge(UP, buff=0.3)
+            .to_edge(LEFT, buff=0.3)
+        )
+
+        # ----- Stage 3: spawn a "clean" copy of the structure (no dims/loads), slightly to the right of original birth place -----
+        NEW_ORIGIN_SHIFT = ORIGIN_SHIFT + RIGHT * 2.5 + UP * 0.4
+        NEW_M_TO_UNIT = M_TO_UNIT * 1.1  # 10% larger
+        new_pts = [
+            NEW_ORIGIN_SHIFT + NEW_M_TO_UNIT * RIGHT * x + NEW_M_TO_UNIT * UP * y
+            for x, y in raw_pts_m
+        ]
+        poly_clean = Polygon(
+            *new_pts,
+            color=BLUE_D,
+            stroke_width=4,
+            fill_color=BLUE_E,
+            fill_opacity=0.0,
+        )
+        self.play(Create(poly_clean))
+
+        # ----- Stage 3a: discretization into 3 finite elements on the clean structure -----
+        def map_new(x: float, y: float):
+            return NEW_ORIGIN_SHIFT + NEW_M_TO_UNIT * RIGHT * x + NEW_M_TO_UNIT * UP * y
+
+        # Internal partition lines: (0,3)-(2,3) and (2,3)-(2,5)
+        part_line_h = Line(map_new(0, 3), map_new(2, 3), color=RED, stroke_width=3)
+        part_line_v = Line(map_new(2, 3), map_new(2, 5), color=RED, stroke_width=3)
+        self.play(Create(VGroup(part_line_h, part_line_v)))
+
+        # Element labels at centroids
+        centroid_rect = map_new(1.0, 1.5)               # lower rectangle
+        centroid_tri1 = map_new(4.0/3.0, 11.0/3.0)      # left top triangle
+        centroid_tri2 = map_new(8.0/3.0, 13.0/3.0)      # right top triangle
+
+        label_e1 = (
+            MathTex(r"e.\ I").scale(0.5).stretch(0.85, 0).move_to(centroid_rect)
+        )
+        label_e2 = (
+            MathTex(r"e.\ II").scale(0.5).stretch(0.85, 0).move_to(centroid_tri1)
+        )
+        label_e3 = (
+            MathTex(r"e.\ III").scale(0.5).stretch(0.85, 0).move_to(centroid_tri2)
+        )
+        self.play(FadeIn(VGroup(label_e1, label_e2, label_e3)))
 
         # ----- Final hold -----
         self.wait(2)
