@@ -1,4 +1,5 @@
 from manim import *
+import numpy as np
 
 class MESStructureScene(Scene):
     """2‑D polygonal structure with distributed load, support, material properties and dimensions."""
@@ -278,6 +279,53 @@ class MESStructureScene(Scene):
             MathTex(r"e.\ III").scale(0.5).stretch(0.85, 0).move_to(centroid_tri2)
         )
         self.play(FadeIn(VGroup(label_e1, label_e2, label_e3)))
+
+        # ----- Stage 3b: node numbering CCW starting at (2,0); labels outside the structure -----
+        node_coords_m = [(2, 0), (2, 3), (4, 5), (2, 5), (0, 3), (0, 0)]
+        node_points = [map_new(x, y) for (x, y) in node_coords_m]
+        center_point = np.mean(np.array(node_points), axis=0)
+
+        circles_with_labels = VGroup()
+        offset_distance = 0.35
+        circle_radius = 0.18
+        for idx, p in enumerate(node_points, start=1):
+            direction_vec = p - center_point
+            norm = np.linalg.norm(direction_vec)
+            unit = (direction_vec / norm) if norm > 1e-6 else np.array([1.0, 0.0, 0.0])
+            target_pos = p + unit * offset_distance
+
+            circ = Circle(
+                radius=circle_radius,
+                color=WHITE,
+                stroke_width=2.5,
+                fill_opacity=0.0,
+            ).move_to(target_pos)
+
+            # 10% smaller digits relative to previous (0.55 → 0.495)
+            num_label = MathTex(str(idx)).scale(0.495).move_to(target_pos)
+
+            # Special adjustment for node 2: shift downward by 1.5 × original digit height (at 0.55)
+            if idx == 2:
+                temp = MathTex("2").scale(0.55)
+                base_dy = 1.5 * temp.height
+                extra_dx = 0.2 * temp.height
+                extra_dy = 0.3 * temp.height
+                circ.shift(DOWN * (base_dy + extra_dy) + RIGHT * extra_dx)
+                num_label.shift(DOWN * (base_dy + extra_dy) + RIGHT * extra_dx)
+
+            circles_with_labels.add(VGroup(circ, num_label))
+
+        # Strictly sequential appearance: each node (circle, then digit) completes before next starts
+        node_anims = []
+        for group in circles_with_labels:
+            circ, num_label = group
+            node_anims.append(
+                Succession(
+                    Create(circ, run_time=0.6),
+                    FadeIn(num_label, shift=0.1 * UP, run_time=0.4),
+                )
+            )
+        self.play(Succession(*node_anims))
 
         # ----- Final hold -----
         self.wait(2)
