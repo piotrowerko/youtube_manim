@@ -234,7 +234,7 @@ class MESStructureScene(Scene):
 
         self.play(
             original_group.animate
-            .scale(0.5)
+            .scale(0.65)
             .to_edge(UP, buff=0.3)
             .to_edge(LEFT, buff=0.3)
         )
@@ -326,6 +326,160 @@ class MESStructureScene(Scene):
                 )
             )
         self.play(Succession(*node_anims))
+
+        # ----- Stage 3c: internal node numbering for each finite element -----
+        internal_labels = VGroup()
+        
+        # Element 1 (rectangle): i=6, j=1, k=2, l=5 (CCW from bottom-left)
+        # Place labels inside element 1, near corresponding global nodes
+        elem1_i = MathTex("i").scale(0.52).move_to(map_new(0.2, 0.3))    # near global node 6 (0,0)
+        elem1_j = MathTex("j").scale(0.52).move_to(map_new(1.8, 0.3))    # near global node 1 (2,0)
+        elem1_k = MathTex("k").scale(0.52).move_to(map_new(1.8, 2.7))    # near global node 2 (2,3)
+        elem1_r = MathTex("r").scale(0.52).move_to(map_new(0.2, 2.7))    # near global node 5 (0,3)
+        internal_labels.add(elem1_i, elem1_j, elem1_k, elem1_r)
+        
+        # Element 2 (left triangle): i=4, j=5, k=2 (CCW from bottom)
+        # Place labels inside element 2, near corresponding global nodes
+        elem2_i = MathTex("i").scale(0.52).move_to(map_new(1.8, 4.4))    # near global node 4 (2,5) - moved down
+        elem2_j = MathTex("j").scale(0.52).move_to(map_new(0.6, 3.3))    # near global node 5 (0,3) - moved back left
+        elem2_k = MathTex("k").scale(0.52).move_to(map_new(1.8, 3.3))    # near global node 2 (2,3)
+        internal_labels.add(elem2_i, elem2_j, elem2_k)
+        
+        # Element 3 (right triangle): i=2, j=3, k=4 (CCW from bottom-left)
+        # Place labels inside element 3, near corresponding global nodes
+        elem3_i = MathTex("i").scale(0.52).move_to(map_new(2.2, 3.5))    # near global node 2 (2,3) - moved down
+        elem3_j = MathTex("j").scale(0.52).move_to(map_new(3.4, 4.7))    # near global node 3 (4,5) - moved right
+        elem3_k = MathTex("k").scale(0.52).move_to(map_new(2.2, 4.7))    # near global node 4 (2,5)
+        internal_labels.add(elem3_i, elem3_j, elem3_k)
+        
+        # Sequential appearance by alphabet within each element: elem1 (i,j,k,l) → elem2 (i,j,k) → elem3 (i,j,k)
+        internal_anims = []
+        
+        # Element 1: i, j, k, l (alphabetical order)
+        for label in [elem1_i, elem1_j, elem1_k, elem1_r]:
+            internal_anims.append(
+                AnimationGroup(
+                    GrowFromCenter(label, run_time=0.6),
+                    label.animate.scale(1.3).set_color(YELLOW)
+                )
+            )
+            internal_anims.append(
+                label.animate.scale(1/1.3).set_color(WHITE)
+            )
+        
+        # Element 2: i, j, k (alphabetical order)
+        for label in [elem2_i, elem2_j, elem2_k]:
+            internal_anims.append(
+                AnimationGroup(
+                    GrowFromCenter(label, run_time=0.6),
+                    label.animate.scale(1.3).set_color(YELLOW)
+                )
+            )
+            internal_anims.append(
+                label.animate.scale(1/1.3).set_color(WHITE)
+            )
+        
+        # Element 3: i, j, k (alphabetical order)
+        for label in [elem3_i, elem3_j, elem3_k]:
+            internal_anims.append(
+                AnimationGroup(
+                    GrowFromCenter(label, run_time=0.6),
+                    label.animate.scale(1.3).set_color(YELLOW)
+                )
+            )
+            internal_anims.append(
+                label.animate.scale(1/1.3).set_color(WHITE)
+            )
+        
+        self.play(Succession(*internal_anims))
+
+        # ----- Stage 4: minimize and move the discretized structure to top-right -----
+        discretized_group = VGroup(
+            poly_clean,
+            part_line_h,
+            part_line_v,
+            label_e1,
+            label_e2,
+            label_e3,
+            circles_with_labels,
+            internal_labels,
+        )
+
+        self.play(
+            discretized_group.animate
+            .scale(0.75)
+            .to_edge(UP, buff=0.3)
+            .to_edge(RIGHT, buff=0.3)
+        )
+
+        # ----- Stage 5: extract element 1 copy from exact MES position to center -----
+        # Create element 1 copy at the EXACT position within the discretized group
+        # This means using the same positioning as the original element 1 in the MES structure
+        
+        # Element 1 copy - start exactly where element 1 is in the discretized structure
+        elem1_pts_m = [(0, 0), (2, 0), (2, 3), (0, 3), (0, 0)]
+        
+        # Use the same mapping as the discretized structure, then apply the group transformations
+        def map_elem1_birth(x: float, y: float):
+            # Original position in NEW coordinate system
+            pos = NEW_ORIGIN_SHIFT + NEW_M_TO_UNIT * RIGHT * x + NEW_M_TO_UNIT * UP * y
+            # Apply the same transformations as discretized_group: scale 0.75, move to top-right
+            pos = pos * 0.75
+            pos += RIGHT * (config.frame_width/2 - 3.75) + UP * (config.frame_height/2 - 3.0)
+            return pos
+        
+        # Create polygon at exact birth position
+        elem1_birth_pts = [map_elem1_birth(x, y) for x, y in elem1_pts_m]
+        elem1_copy_poly = Polygon(*elem1_birth_pts, color=BLUE_D, stroke_width=3, fill_opacity=0.0)
+        
+        # Create element label "e. I" at birth position
+        elem1_label_copy = (
+            MathTex(r"e.\ I").scale(0.5 * 0.75).stretch(0.85, 0)
+            .move_to(map_elem1_birth(1.0, 1.5))
+        )
+        
+        # Create global node labels at birth position
+        elem1_global_nodes = [(0, 0, "6"), (2, 0, "1"), (2, 3, "2"), (0, 3, "5")]
+        elem1_global_circles = VGroup()
+        
+        birth_offset_distance = 0.35 * 0.75
+        birth_circle_radius = 0.18 * 0.75
+        
+        for x, y, num in elem1_global_nodes:
+            node_pos = map_elem1_birth(x, y)
+            elem_center = map_elem1_birth(1.0, 1.5)
+            direction_vec = node_pos - elem_center
+            norm = np.linalg.norm(direction_vec)
+            unit = (direction_vec / norm) if norm > 1e-6 else np.array([1.0, 0.0, 0.0])
+            target_pos = node_pos + unit * birth_offset_distance
+            
+            circ = Circle(radius=birth_circle_radius, color=WHITE, stroke_width=2.5, fill_opacity=0.0).move_to(target_pos)
+            num_label = MathTex(num).scale(0.495 * 0.75).move_to(target_pos)
+            elem1_global_circles.add(VGroup(circ, num_label))
+        
+        # Create internal node labels at birth position  
+        elem1_internal_copy = VGroup()
+        elem1_i_copy = MathTex("i").scale(0.52 * 0.75).move_to(map_elem1_birth(0.2, 0.3))
+        elem1_j_copy = MathTex("j").scale(0.52 * 0.75).move_to(map_elem1_birth(1.8, 0.3))
+        elem1_k_copy = MathTex("k").scale(0.52 * 0.75).move_to(map_elem1_birth(1.8, 2.7))
+        elem1_r_copy = MathTex("r").scale(0.52 * 0.75).move_to(map_elem1_birth(0.2, 2.7))
+        elem1_internal_copy.add(elem1_i_copy, elem1_j_copy, elem1_k_copy, elem1_r_copy)
+        
+        # Group everything
+        elem1_full_copy = VGroup(elem1_copy_poly, elem1_label_copy, elem1_global_circles, elem1_internal_copy)
+        
+        # First: appear at exact birth position 
+        self.play(FadeIn(elem1_full_copy))
+        
+        # Second: move to center and scale up
+        target_position = UP * 2.3  # closer to top edge
+        target_scale = 1.2  # smaller, more reasonable size
+        
+        self.play(
+            elem1_full_copy.animate
+            .scale(target_scale)
+            .move_to(target_position)
+        )
 
         # ----- Final hold -----
         self.wait(2)
