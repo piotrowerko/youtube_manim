@@ -304,14 +304,28 @@ class MESStructureScene(Scene):
             # 10% smaller digits relative to previous (0.55 → 0.495)
             num_label = MathTex(str(idx)).scale(0.495).move_to(target_pos)
 
-            # Special adjustment for node 2: shift downward by 1.5 × original digit height (at 0.55)
+            # Special adjustment for node 2: shift downward and right to make room for DOF
             if idx == 2:
                 temp = MathTex("2").scale(0.55)
                 base_dy = 1.5 * temp.height
-                extra_dx = 0.2 * temp.height
+                extra_dx = 2.5 * temp.height  # moved further right to make room for DOF
                 extra_dy = 0.3 * temp.height
                 circ.shift(DOWN * (base_dy + extra_dy) + RIGHT * extra_dx)
                 num_label.shift(DOWN * (base_dy + extra_dy) + RIGHT * extra_dx)
+            
+            # Special adjustment for node 3: shift right to make room for DOF
+            if idx == 3:
+                temp = MathTex("3").scale(0.55)
+                extra_dx = 0.4 * temp.height  # shift right to avoid DOF
+                circ.shift(RIGHT * extra_dx)
+                num_label.shift(RIGHT * extra_dx)
+            
+            # Special adjustment for node 4: shift right to make room for DOF
+            if idx == 4:
+                temp = MathTex("4").scale(0.55)
+                extra_dx = 2 * temp.height  # moved further right to avoid DOF
+                circ.shift(RIGHT * extra_dx)
+                num_label.shift(RIGHT * extra_dx)
 
             circles_with_labels.add(VGroup(circ, num_label))
 
@@ -333,7 +347,7 @@ class MESStructureScene(Scene):
         # Element 1 (rectangle): i=6, j=1, k=2, l=5 (CCW from bottom-left)
         # Place labels inside element 1, near corresponding global nodes
         elem1_i = MathTex("i").scale(0.52).move_to(map_new(0.2, 0.3))    # near global node 6 (0,0)
-        elem1_j = MathTex("j").scale(0.52).move_to(map_new(1.8, 0.3))    # near global node 1 (2,0)
+        elem1_j = MathTex("j").scale(0.52).move_to(map_new(1.6, 0.3))    # near global node 1 (2,0) - moved left to avoid Q1
         elem1_k = MathTex("k").scale(0.52).move_to(map_new(1.8, 2.7))    # near global node 2 (2,3)
         elem1_r = MathTex("r").scale(0.52).move_to(map_new(0.2, 2.7))    # near global node 5 (0,3)
         internal_labels.add(elem1_i, elem1_j, elem1_k, elem1_r)
@@ -342,7 +356,7 @@ class MESStructureScene(Scene):
         # Place labels inside element 2, near corresponding global nodes
         elem2_i = MathTex("i").scale(0.52).move_to(map_new(1.8, 4.4))    # near global node 4 (2,5) - moved down
         elem2_j = MathTex("j").scale(0.52).move_to(map_new(0.6, 3.3))    # near global node 5 (0,3) - moved back left
-        elem2_k = MathTex("k").scale(0.52).move_to(map_new(1.8, 3.3))    # near global node 2 (2,3)
+        elem2_k = MathTex("k").scale(0.52).move_to(map_new(1.6, 3.3))    # near global node 2 (2,3) - moved left to avoid Q3
         internal_labels.add(elem2_i, elem2_j, elem2_k)
         
         # Element 3 (right triangle): i=2, j=3, k=4 (CCW from bottom-left)
@@ -393,6 +407,75 @@ class MESStructureScene(Scene):
         
         self.play(Succession(*internal_anims))
 
+        # ----- Stage 3d: add degrees of freedom (DOF) coordinate systems at each node -----
+        dof_systems = VGroup()
+        
+        # Node coordinates and their global DOF numbering (CCW from node 1)
+        # Node 1: (2,0) -> Q1,Q2; Node 2: (2,3) -> Q3,Q4; Node 3: (4,5) -> Q5,Q6
+        # Node 4: (2,5) -> Q7,Q8; Node 5: (0,3) -> Q9,Q10; Node 6: (0,0) -> Q11,Q12
+        node_dof_data = [
+            (2, 0, "Q_1", "Q_2"),    # Node 1
+            (2, 3, "Q_3", "Q_4"),    # Node 2  
+            (4, 5, "Q_5", "Q_6"),    # Node 3
+            (2, 5, "Q_7", "Q_8"),    # Node 4
+            (0, 3, "Q_9", "Q_{10}"), # Node 5
+            (0, 0, "Q_{11}", "Q_{12}") # Node 6
+        ]
+        
+        dof_scale = 0.2  # smaller than main coordinate system
+        stub_length = dof_scale * 0.2  # small stubs
+        
+        for x, y, q_x, q_y in node_dof_data:
+            node_pos = map_new(x, y)
+            
+            # X-axis (horizontal DOF) - white L-shape with stubs
+            x_line_pos = Line(
+                node_pos,
+                node_pos + RIGHT * dof_scale * 0.9,
+                stroke_width=2,
+                color=WHITE
+            )
+            x_line_neg = Line(
+                node_pos,
+                node_pos + LEFT * stub_length,
+                stroke_width=2,
+                color=WHITE
+            )
+            x_arrowhead = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + RIGHT * dof_scale).rotate(-PI/2)
+            
+            # Y-axis (vertical DOF) - white L-shape with stubs
+            y_line_pos = Line(
+                node_pos,
+                node_pos + UP * dof_scale * 0.9,
+                stroke_width=2,
+                color=WHITE
+            )
+            y_line_neg = Line(
+                node_pos,
+                node_pos + DOWN * stub_length,
+                stroke_width=2,
+                color=WHITE
+            )
+            y_arrowhead = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + UP * dof_scale)
+            
+            # Labels for DOFs
+            x_label = MathTex(q_x).scale(0.25).move_to(node_pos + RIGHT * dof_scale + RIGHT * 0.1 + DOWN * 0.08)
+            y_label = MathTex(q_y).scale(0.25).move_to(node_pos + UP * dof_scale + UP * 0.1 + LEFT * 0.08)
+            
+            # Group this node's DOF system
+            node_dof = VGroup(
+                x_line_pos, x_line_neg, x_arrowhead,
+                y_line_pos, y_line_neg, y_arrowhead,
+                x_label, y_label
+            )
+            dof_systems.add(node_dof)
+        
+        # Animate appearance of all DOF systems
+        self.play(LaggedStartMap(FadeIn, dof_systems, lag_ratio=0.1))
+
+        # wait for 6 seconds
+        self.wait(10)
+
         # ----- Stage 4: minimize and move the discretized structure to top-right -----
         discretized_group = VGroup(
             poly_clean,
@@ -403,6 +486,7 @@ class MESStructureScene(Scene):
             label_e3,
             circles_with_labels,
             internal_labels,
+            dof_systems,
         )
 
         self.play(
@@ -432,10 +516,10 @@ class MESStructureScene(Scene):
         elem1_birth_pts = [map_elem1_birth(x, y) for x, y in elem1_pts_m]
         elem1_copy_poly = Polygon(*elem1_birth_pts, color=BLUE_D, stroke_width=3, fill_opacity=0.0)
         
-        # Create element label "e. I" at birth position
+        # Create element label "e. I" at birth position - shifted right and up
         elem1_label_copy = (
             MathTex(r"e.\ I").scale(0.5 * 0.75).stretch(0.85, 0)
-            .move_to(map_elem1_birth(1.0, 1.5))
+            .move_to(map_elem1_birth(1.4, 2.2))  # moved right and up from center
         )
         
         # Create global node labels at birth position
@@ -455,17 +539,35 @@ class MESStructureScene(Scene):
             
             circ = Circle(radius=birth_circle_radius, color=WHITE, stroke_width=2.5, fill_opacity=0.0).move_to(target_pos)
             num_label = MathTex(num).scale(0.495 * 0.75).move_to(target_pos)
+            
+            # Special adjustments for syn_e1 global node labels
+            if num == "1":  # Node 1 - move down a bit
+                temp = MathTex("1").scale(0.495 * 0.75)
+                extra_dy = 1 * temp.height
+                circ.shift(DOWN * extra_dy)
+                num_label.shift(DOWN * extra_dy)
+            elif num == "2":  # Node 2 - move right
+                temp = MathTex("2").scale(0.495 * 0.75)
+                extra_dx = 1.5 * temp.height
+                circ.shift(RIGHT * extra_dx)
+                num_label.shift(RIGHT * extra_dx)
+            elif num == "5":  # Node 5 - move left
+                temp = MathTex("5").scale(0.495 * 0.75)
+                extra_dx = -2.5 * temp.height
+                circ.shift(RIGHT * extra_dx)
+                num_label.shift(RIGHT * extra_dx)
+            
             elem1_global_circles.add(VGroup(circ, num_label))
         
         # Create internal node labels at birth position  
         elem1_internal_copy = VGroup()
         elem1_i_copy = MathTex("i").scale(0.52 * 0.75).move_to(map_elem1_birth(0.2, 0.3))
-        elem1_j_copy = MathTex("j").scale(0.52 * 0.75).move_to(map_elem1_birth(1.8, 0.3))
+        elem1_j_copy = MathTex("j").scale(0.52 * 0.75).move_to(map_elem1_birth(1.45, 0.3))  # moved minimally right
         elem1_k_copy = MathTex("k").scale(0.52 * 0.75).move_to(map_elem1_birth(1.8, 2.7))
-        elem1_r_copy = MathTex("r").scale(0.52 * 0.75).move_to(map_elem1_birth(0.2, 2.7))
+        elem1_r_copy = MathTex("r").scale(0.52 * 0.75).move_to(map_elem1_birth(0.2, 2.6))  # moved back up
         elem1_internal_copy.add(elem1_i_copy, elem1_j_copy, elem1_k_copy, elem1_r_copy)
         
-        # Group everything
+        # Group everything (without coordinate system initially)
         elem1_full_copy = VGroup(elem1_copy_poly, elem1_label_copy, elem1_global_circles, elem1_internal_copy)
         
         # First: appear at exact birth position 
@@ -480,6 +582,131 @@ class MESStructureScene(Scene):
             .scale(target_scale)
             .move_to(target_position)
         )
+        
+        # Third: add coordinate system after positioning
+        # Create L-shaped coordinate system at final position (center of syn_e1)
+        coord_origin = target_position
+        coord_scale = 0.3  # small coordinate system
+        
+        # X-axis (horizontal) - main line to positive direction + small stub to negative
+        stub_length = coord_scale * 0.15  # small stub length
+        x_line_positive = Line(
+            coord_origin,
+            coord_origin + RIGHT * coord_scale * 0.9,  # slightly shorter to make room for arrowhead
+            stroke_width=4,
+            color=RED
+        )
+        x_line_negative = Line(
+            coord_origin,
+            coord_origin + LEFT * stub_length,  # small stub in negative direction
+            stroke_width=4,
+            color=RED
+        )
+        x_arrowhead = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin + RIGHT * coord_scale).rotate(-PI/2)
+        x_axis = VGroup(x_line_positive, x_line_negative, x_arrowhead)
+        x_label = MathTex("x_1").scale(0.4).move_to(coord_origin + RIGHT * coord_scale + RIGHT * 0.15 + DOWN * 0.12)
+        
+        # Y-axis (vertical) - main line to positive direction + small stub to negative
+        y_line_positive = Line(
+            coord_origin,
+            coord_origin + UP * coord_scale * 0.9,  # slightly shorter to make room for arrowhead
+            stroke_width=4,
+            color=RED
+        )
+        y_line_negative = Line(
+            coord_origin,
+            coord_origin + DOWN * stub_length,  # small stub in negative direction
+            stroke_width=4,
+            color=RED
+        )
+        y_arrowhead = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin + UP * coord_scale)
+        y_axis = VGroup(y_line_positive, y_line_negative, y_arrowhead)
+        y_label = MathTex("y_1").scale(0.4).move_to(coord_origin + UP * coord_scale + UP * 0.15 + LEFT * 0.12)
+        
+        coord_system = VGroup(x_axis, x_label, y_axis, y_label)
+        
+        # Animate appearance of coordinate system
+        self.play(FadeIn(coord_system))
+        
+        # ----- Fourth: add DOF systems for syn_e1 nodes (nodes 6,1,2,5) -----
+        syn_dof_systems = VGroup()
+        
+        # DOF data for syn_e1 nodes only (corresponding to element 1)
+        # Use the same coordinate mapping as syn_e1 was created with
+        syn_dof_data = [
+            (0, 0, "Q_{11}", "Q_{12}"),  # Node 6 (i)
+            (2, 0, "Q_1", "Q_2"),        # Node 1 (j)
+            (2, 3, "Q_3", "Q_4"),        # Node 2 (k)
+            (0, 3, "Q_9", "Q_{10}")      # Node 5 (r)
+        ]
+        
+        def map_syn_dof(x: float, y: float):
+            # Get actual vertex positions from the polygon after transformation
+            # elem1_copy_poly should have the exact vertex positions after scaling and moving
+            polygon_vertices = elem1_copy_poly.get_vertices()
+            
+            # Map our corner coordinates to polygon vertices
+            # elem1_pts_m = [(0, 0), (2, 0), (2, 3), (0, 3), (0, 0)]
+            corner_map = {
+                (0, 0): polygon_vertices[0],  # bottom-left
+                (2, 0): polygon_vertices[1],  # bottom-right  
+                (2, 3): polygon_vertices[2],  # top-right
+                (0, 3): polygon_vertices[3],  # top-left
+            }
+            
+            # Return the actual vertex position
+            return corner_map.get((x, y), target_position)
+        
+        syn_dof_scale = 0.2 * target_scale  # scale with syn_e1
+        syn_stub_length = syn_dof_scale * 0.2
+        
+        for x, y, q_x, q_y in syn_dof_data:
+            node_pos = map_syn_dof(x, y)
+            
+            # X-axis (horizontal DOF) - white L-shape with stubs
+            x_line_pos = Line(
+                node_pos,
+                node_pos + RIGHT * syn_dof_scale * 0.9,
+                stroke_width=2,
+                color=WHITE
+            )
+            x_line_neg = Line(
+                node_pos,
+                node_pos + LEFT * syn_stub_length,
+                stroke_width=2,
+                color=WHITE
+            )
+            x_arrowhead = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03 * target_scale).move_to(node_pos + RIGHT * syn_dof_scale).rotate(-PI/2)
+            
+            # Y-axis (vertical DOF) - white L-shape with stubs
+            y_line_pos = Line(
+                node_pos,
+                node_pos + UP * syn_dof_scale * 0.9,
+                stroke_width=2,
+                color=WHITE
+            )
+            y_line_neg = Line(
+                node_pos,
+                node_pos + DOWN * syn_stub_length,
+                stroke_width=2,
+                color=WHITE
+            )
+            y_arrowhead = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03 * target_scale).move_to(node_pos + UP * syn_dof_scale)
+            
+            # Labels for DOFs - positioned to avoid overlap
+            x_label = MathTex(q_x).scale(0.25 * target_scale).move_to(node_pos + RIGHT * syn_dof_scale + RIGHT * 0.1 * target_scale + DOWN * 0.08 * target_scale)
+            y_label = MathTex(q_y).scale(0.25 * target_scale).move_to(node_pos + UP * syn_dof_scale + UP * 0.1 * target_scale + LEFT * 0.08 * target_scale)
+            
+            # Group this node's DOF system
+            node_dof = VGroup(
+                x_line_pos, x_line_neg, x_arrowhead,
+                y_line_pos, y_line_neg, y_arrowhead,
+                x_label, y_label
+            )
+            syn_dof_systems.add(node_dof)
+        
+        # Animate appearance of syn_e1 DOF systems
+        self.play(LaggedStartMap(FadeIn, syn_dof_systems, lag_ratio=0.1))
 
         # ----- Final hold -----
         self.wait(2)
