@@ -81,6 +81,55 @@ class MESStructureScene(Scene):
             hatch.add(h)
         self.play(Create(base_line), LaggedStartMap(Create, hatch, lag_ratio=0.05))
 
+        # ----- Global coordinate system (2D continuum) -----
+        # Position to the right of the main structure
+        global_coord_origin = ORIGIN_SHIFT + RIGHT * 5.5 + UP * 1.5
+        global_coord_scale = 1.5  # large coordinate system
+        
+        # X-axis (horizontal) - red L-shape with stub
+        x_line_pos = Line(
+            global_coord_origin,
+            global_coord_origin + RIGHT * global_coord_scale * 0.9,
+            stroke_width=6,
+            color=RED
+        )
+        x_line_neg = Line(
+            global_coord_origin,
+            global_coord_origin + LEFT * global_coord_scale * 0.2,
+            stroke_width=6,
+            color=RED
+        )
+        x_arrowhead = Triangle(color=RED, fill_opacity=1.0).scale(0.1).move_to(global_coord_origin + RIGHT * global_coord_scale).rotate(-PI/2)
+        
+        # Y-axis (vertical) - red L-shape with stub
+        y_line_pos = Line(
+            global_coord_origin,
+            global_coord_origin + UP * global_coord_scale * 0.9,
+            stroke_width=6,
+            color=RED
+        )
+        y_line_neg = Line(
+            global_coord_origin,
+            global_coord_origin + DOWN * global_coord_scale * 0.2,
+            stroke_width=6,
+            color=RED
+        )
+        y_arrowhead = Triangle(color=RED, fill_opacity=1.0).scale(0.1).move_to(global_coord_origin + UP * global_coord_scale)
+        
+        # Labels for global axes
+        x_global_label = MathTex("X").scale(0.8).move_to(global_coord_origin + RIGHT * global_coord_scale + RIGHT * 0.2 + DOWN * 0.15)
+        y_global_label = MathTex("Y").scale(0.8).move_to(global_coord_origin + UP * global_coord_scale + UP * 0.2 + LEFT * 0.15)
+        
+        # Group global coordinate system
+        global_coord_system = VGroup(
+            x_line_pos, x_line_neg, x_arrowhead,
+            y_line_pos, y_line_neg, y_arrowhead,
+            x_global_label, y_global_label
+        )
+        
+        # Animate appearance of global coordinate system
+        self.play(Create(global_coord_system))
+
         # ----- Dimensioning -----
         dims = VGroup()
         
@@ -219,6 +268,9 @@ class MESStructureScene(Scene):
         # Potem pokaż teksty z opisami
         self.play(LaggedStartMap(FadeIn, dimension_texts, lag_ratio=0.1))
 
+        # wait for 10 seconds
+        self.wait(10)
+
         # ----- Stage 2: minimize and move the whole drawing to top-left -----
         original_group = VGroup(
             poly,
@@ -232,12 +284,16 @@ class MESStructureScene(Scene):
             extension_lines,
         )
 
+        # Fade out the global coordinate system before moving the main structure
+        self.play(FadeOut(global_coord_system))
+
         self.play(
             original_group.animate
             .scale(0.65)
             .to_edge(UP, buff=0.3)
             .to_edge(LEFT, buff=0.3)
         )
+
 
         # ----- Stage 3: spawn a "clean" copy of the structure (no dims/loads), slightly to the right of original birth place -----
         NEW_ORIGIN_SHIFT = ORIGIN_SHIFT + RIGHT * 2.5 + UP * 0.4
@@ -459,8 +515,8 @@ class MESStructureScene(Scene):
             y_arrowhead = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + UP * dof_scale)
             
             # Labels for DOFs
-            x_label = MathTex(q_x).scale(0.25).move_to(node_pos + RIGHT * dof_scale + RIGHT * 0.1 + DOWN * 0.08)
-            y_label = MathTex(q_y).scale(0.25).move_to(node_pos + UP * dof_scale + UP * 0.1 + LEFT * 0.08)
+            x_label = MathTex(q_x).scale(0.40).move_to(node_pos + RIGHT * dof_scale + RIGHT * 0.1 + DOWN * 0.08)
+            y_label = MathTex(q_y).scale(0.40).move_to(node_pos + UP * dof_scale + UP * 0.1 + LEFT * 0.15)
             
             # Group this node's DOF system
             node_dof = VGroup(
