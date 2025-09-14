@@ -764,8 +764,169 @@ class MESStructureScene(Scene):
         # Animate appearance of syn_e1 DOF systems
         self.play(LaggedStartMap(FadeIn, syn_dof_systems, lag_ratio=0.1))
 
+        # ----- Stage 6: Shape function derivation starting with polynomial form -----
+        # Position much lower to avoid overlapping with constructions
+        shape_func_pos = target_position + DOWN * 3.5
+        
+        # Title for polynomial derivation section
+        poly_title = MathTex(r"\text{Shape Function Derivation from Polynomial Form}").scale(0.4)
+        poly_title.move_to(shape_func_pos + UP * 1.1)
+        self.play(FadeIn(poly_title))
+        
+        # Position for polynomial derivation steps - moved much lower to avoid overlap
+        poly_deriv_pos = shape_func_pos + DOWN * 2.0  # Much lower from DOWN * 0.5
+        
+        # Step 1: Start with bilinear form
+        poly_step1 = MathTex(r"\text{Start with bilinear form:}").scale(0.35)
+        poly_step1.move_to(poly_deriv_pos + UP * 2.8)
+        self.play(FadeIn(poly_step1))
+        
+        poly_step1_eq = MathTex(r"N(\xi,\eta) = a_0 + a_1\xi + a_2\eta + a_3\xi\eta").scale(0.35)
+        poly_step1_eq.move_to(poly_deriv_pos + UP * 2.4)
+        self.play(FadeIn(poly_step1_eq))
+        
+        # Step 2: Node i = (-1,-1) and Kronecker conditions
+        poly_step2 = MathTex(r"\text{Node }i = (-1,-1)\text{. Kronecker conditions:}").scale(0.35)
+        poly_step2.move_to(poly_deriv_pos + UP * 1.9)
+        self.play(FadeIn(poly_step2))
+        
+        poly_step2_eq = MathTex(
+            r"N(-1,-1) = 1, \quad N(+1,-1) = 0, \quad N(-1,+1) = 0, \quad N(+1,+1) = 0"
+        ).scale(0.30)
+        poly_step2_eq.move_to(poly_deriv_pos + UP * 1.5)
+        self.play(FadeIn(poly_step2_eq))
+        
+        # Step 3: Linear system
+        poly_step3 = MathTex(r"\text{Linear system:}").scale(0.35)
+        poly_step3.move_to(poly_deriv_pos + UP * 1.0)
+        self.play(FadeIn(poly_step3))
+        
+        poly_step3_eq = MathTex(
+            r"\begin{aligned}"
+            r"a_0 - a_1 - a_2 + a_3 &= 1\\[0.1em]"
+            r"a_0 + a_1 - a_2 - a_3 &= 0\\[0.1em]"
+            r"a_0 - a_1 + a_2 - a_3 &= 0\\[0.1em]"
+            r"a_0 + a_1 + a_2 + a_3 &= 0"
+            r"\end{aligned}"
+        ).scale(0.28)
+        poly_step3_eq.move_to(poly_deriv_pos + UP * 0.3)
+        self.play(FadeIn(poly_step3_eq))
+        
+        # Step 4: Solution - moved to right column (higher up)
+        poly_step4 = MathTex(r"\text{Solution:}").scale(0.35)
+        poly_step4.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 2.8)  # Right column, much higher up
+        self.play(FadeIn(poly_step4))
+        
+        poly_step4_eq = MathTex(
+            r"a_0 = \frac{1}{4}, \quad a_1 = -\frac{1}{4}, \quad a_2 = -\frac{1}{4}, \quad a_3 = \frac{1}{4}"
+        ).scale(0.30)
+        poly_step4_eq.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 2.4)  # Right column
+        self.play(FadeIn(poly_step4_eq))
+        
+        # Step 5: Therefore - moved to right column (higher up)
+        poly_step5 = MathTex(r"\text{Therefore:}").scale(0.35)
+        poly_step5.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 1.9)  # Right column, higher up
+        self.play(FadeIn(poly_step5))
+        
+        poly_step5_eq = MathTex(
+            r"N_i(\xi,\eta) = \frac{1}{4} - \frac{1}{4}\xi - \frac{1}{4}\eta + \frac{1}{4}\xi\eta = \frac{1}{4}(1-\xi)(1-\eta)"
+        ).scale(0.30)
+        poly_step5_eq.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 1.5)  # Right column, higher up
+        self.play(FadeIn(poly_step5_eq))
+        
+        # Step 6: Mapping to physical coordinates - right column (higher up)
+        poly_step6 = MathTex(r"\text{Mapping to physical coordinates for rectangle }a \times b\text{:}").scale(0.35)
+        poly_step6.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 1.0)  # Right column, higher up
+        self.play(FadeIn(poly_step6))
+        
+        poly_step6_eq = MathTex(
+            r"\xi = \frac{2x}{a}, \quad \eta = \frac{2y}{b} \quad \Leftrightarrow \quad x = \frac{a}{2}\xi, \quad y = \frac{b}{2}\eta"
+        ).scale(0.30)
+        poly_step6_eq.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 0.6)  # Right column, higher up
+        self.play(FadeIn(poly_step6_eq))
+        
+        # Step 7: Final substitution - right column (higher up)
+        poly_step7 = MathTex(r"\text{Substitute:}").scale(0.35)
+        poly_step7.move_to(poly_deriv_pos + RIGHT * 4.5 + UP * 0.1)  # Right column, higher up
+        self.play(FadeIn(poly_step7))
+        
+        poly_step7_eq = MathTex(
+            r"N_i(x,y) = \frac{1}{4}\left(1-\frac{2x}{a}\right)\left(1-\frac{2y}{b}\right)"
+        ).scale(0.35)
+        poly_step7_eq.move_to(poly_deriv_pos + RIGHT * 4.5 + DOWN * 0.3)  # Right column, final result higher up
+        
+        # Highlight the final result
+        poly_highlight_box = SurroundingRectangle(poly_step7_eq, color=YELLOW, buff=0.1)
+        self.play(FadeIn(poly_step7_eq))
+        self.play(Create(poly_highlight_box))
+        
+        # Hold the polynomial derivation for a moment
+        self.wait(3)
+        
+        # Group all polynomial derivation elements
+        polynomial_derivation = VGroup(
+            poly_title, poly_step1, poly_step1_eq, poly_step2, poly_step2_eq,
+            poly_step3, poly_step3_eq, poly_step4, poly_step4_eq,
+            poly_step5, poly_step5_eq, poly_step6, poly_step6_eq,
+            poly_step7, poly_step7_eq, poly_highlight_box
+        )
+        
+        # Animate disappearance of polynomial derivation
+        self.play(FadeOut(polynomial_derivation))
+        
+        # Now show the existing bilinear derivation
+        # Title for shape function section (smaller)
+        title = MathTex(r"\text{Bilinear Shape Function for Node }i").scale(0.4)
+        title.move_to(shape_func_pos + UP * 1.5)
+        self.play(FadeIn(title))
+        
+        # Mathematical derivation positioned centrally with more space - moved further down
+        deriv_pos = shape_func_pos + DOWN * 1.0  # Moved down from DOWN * 0.2 to DOWN * 1.0
+        
+        # Step 1: Natural coordinates introduction
+        step1 = MathTex(r"\text{Natural coordinates: } \xi = \frac{2x}{a}, \; \eta = \frac{2y}{b}").scale(0.32)
+        step1.move_to(deriv_pos + UP * 1.8)
+        self.play(FadeIn(step1))
+        
+        # Step 2: Transform to [-1,1] × [-1,1] space - more spacing
+        step2 = MathTex(r"[0,a] \times [0,b] \rightarrow [-1,1] \times [-1,1]").scale(0.33)
+        step2.move_to(deriv_pos + UP * 1.2)  # Much more space between steps
+        self.play(FadeIn(step2))
+        
+        # Step 3: Standard bilinear shape functions - increased spacing and size
+        step3 = MathTex(
+            r"\begin{aligned}"
+            r"N_i(\xi,\eta) &= \frac{1}{4}(1-\xi)(1-\eta)\\"
+            r"N_j(\xi,\eta) &= \frac{1}{4}(1+\xi)(1-\eta)\\"
+            r"N_k(\xi,\eta) &= \frac{1}{4}(1+\xi)(1+\eta)\\"
+            r"N_r(\xi,\eta) &= \frac{1}{4}(1-\xi)(1+\eta)"
+            r"\end{aligned}"
+        ).scale(0.30)
+        step3.move_to(deriv_pos + UP * 0.2)  # Much more space from previous step
+        self.play(FadeIn(step3))
+        
+        # Step 4: Substitute natural coordinates - more spacing
+        step4 = MathTex(r"\text{Substitute: } \xi = \frac{2x}{a}, \; \eta = \frac{2y}{b}").scale(0.33)
+        step4.move_to(deriv_pos + DOWN * 0.8)  # Much more space between steps
+        self.play(FadeIn(step4))
+        
+        # Step 5: Final results (highlighted) - positioned to the right with more space
+        step5 = MathTex(
+            r"\begin{aligned}"
+            r"N_i(x,y) &= \frac{1}{4}\left(1-\frac{2x}{a}\right)\left(1-\frac{2y}{b}\right)\\"
+            r"N_j(x,y) &= \frac{1}{4}\left(1+\frac{2x}{a}\right)\left(1-\frac{2y}{b}\right)\\"
+            r"N_k(x,y) &= \frac{1}{4}\left(1+\frac{2x}{a}\right)\left(1+\frac{2y}{b}\right)\\"
+            r"N_r(x,y) &= \frac{1}{4}\left(1-\frac{2x}{a}\right)\left(1+\frac{2y}{b}\right)"
+            r"\end{aligned}"
+        ).scale(0.31)
+        step5.move_to(deriv_pos + RIGHT * 3.0 + DOWN * 0.5)  # Much more to the right and centered vertically
+        
+        highlight_box = SurroundingRectangle(step5, color=YELLOW, buff=0.1)
+        self.play(FadeIn(step5))
+        self.play(Create(highlight_box))
+
         # ----- Final hold -----
-        self.wait(2)
+        self.wait(3)
 
 if __name__ == "__main__":
     scene = MESStructureScene()
