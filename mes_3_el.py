@@ -863,16 +863,22 @@ class MESStructureScene(Scene):
         # Hold the polynomial derivation for a moment
         self.wait(3)
         
-        # Group all polynomial derivation elements
-        polynomial_derivation = VGroup(
+        # Group polynomial derivation elements except final result
+        polynomial_derivation_steps = VGroup(
             poly_title, poly_step1, poly_step1_eq, poly_step2, poly_step2_eq,
             poly_step3, poly_step3_eq, poly_step4, poly_step4_eq,
             poly_step5, poly_step5_eq, poly_step6, poly_step6_eq,
-            poly_step7, poly_step7_eq, poly_highlight_box
+            poly_step7  # Only the "Substitute:" label, not the equation
         )
         
-        # Animate disappearance of polynomial derivation
-        self.play(FadeOut(polynomial_derivation))
+        # Keep final result visible (poly_step7_eq and poly_highlight_box)
+        final_result = VGroup(poly_step7_eq, poly_highlight_box)
+        
+        # Animate disappearance of derivation steps, keep final result
+        self.play(FadeOut(polynomial_derivation_steps))
+        
+        # Hide first final result before showing second derivation
+        self.play(FadeOut(final_result))  # Hide first yellow box before second derivation starts
         
         # Now show the existing bilinear derivation
         # Title for shape function section (smaller)
@@ -921,9 +927,88 @@ class MESStructureScene(Scene):
         ).scale(0.31)
         step5.move_to(deriv_pos + RIGHT * 3.0 + DOWN * 0.5)  # Much more to the right and centered vertically
         
-        highlight_box = SurroundingRectangle(step5, color=YELLOW, buff=0.1)
+        highlight_box2 = SurroundingRectangle(step5, color=YELLOW, buff=0.1)
         self.play(FadeIn(step5))
-        self.play(Create(highlight_box))
+        self.play(Create(highlight_box2))
+        
+        # Hold second derivation for a moment
+        self.wait(3)
+        
+        # Group second derivation elements except final result
+        second_derivation_steps = VGroup(title, step1, step2, step3, step4)
+        
+        # Keep second final result visible (step5 and highlight_box2)  
+        second_final_result = VGroup(step5, highlight_box2)
+        
+        # Hide derivation steps, keep second yellow box
+        self.play(FadeOut(second_derivation_steps))  # Hide derivation steps, keep second yellow box
+        
+        # Add dimension labels to the miniaturized construction (top-left)
+        # The construction was scaled by 0.65 and moved to top-left corner
+        # Original construction position after scaling and moving: UP + EDGE + LEFT + EDGE
+        
+        # Add 'a = ' before the horizontal bottom dimension '2 m' 
+        a_label = MathTex(r"a = ").scale(0.4)
+        # Position: wyżej o 15% wysokości ekranu, w lewo o 8% szerokości ekranu (jeszcze bardziej w lewo)
+        frame_height = config.frame_height
+        frame_width = config.frame_width
+        a_label.move_to(LEFT * (5.0 + 0.08 * frame_width) + DOWN * (2.5 - 0.15 * frame_height))
+        self.play(FadeIn(a_label))
+        
+        # Add 'b = ' near the vertical left dimension '3 m'  
+        b_label = MathTex(r"b = ").scale(0.4)
+        # Position: wyżej o 5% wysokości ekranu, w lewo o 6% szerokości ekranu (poprawiony kierunek)
+        b_label.move_to(LEFT * (6.0 + 0.06 * frame_width) + UP * (0.5 + 0.05 * frame_height))
+        self.play(FadeIn(b_label))
+        
+        # Briefly highlight the dimension labels
+        a_highlight = SurroundingRectangle(VGroup(a_label), color=YELLOW, buff=0.05)
+        b_highlight = SurroundingRectangle(VGroup(b_label), color=YELLOW, buff=0.05) 
+        
+        self.play(Create(a_highlight), Create(b_highlight))
+        self.wait(1)
+        self.play(FadeOut(a_highlight), FadeOut(b_highlight))
+        
+        # Move second yellow box further right
+        second_final_result.move_to(deriv_pos + RIGHT * 5.5 + DOWN * 0.5)  # Much further right
+        
+        # Add shape function matrix in the center (lower to avoid syn_el_1)
+        matrix_pos = ORIGIN + DOWN * 1.5  # Lower position
+        
+        matrix_title = MathTex(r"\text{Shape Function Matrix:}").scale(0.5)
+        matrix_title.move_to(matrix_pos + UP * 2.0)  # Lower title
+        self.play(FadeIn(matrix_title))
+        
+        # Shape function matrix N (complete without dots)
+        shape_matrix = MathTex(
+            r"\mathbf{N} = \begin{bmatrix}"
+            r"N_i & 0 & N_j & 0 & N_k & 0 & N_r & 0 \\"
+            r"0 & N_i & 0 & N_j & 0 & N_k & 0 & N_r"
+            r"\end{bmatrix}"
+        ).scale(0.35)
+        shape_matrix.move_to(matrix_pos + UP * 1.0)
+        self.play(FadeIn(shape_matrix))
+        
+        # Complete substituted matrix with actual functions
+        substituted_matrix = MathTex(
+            r"\mathbf{N} = \begin{bmatrix}"
+            r"\frac{1}{4}(1-\frac{2x}{a})(1-\frac{2y}{b}) & 0 & \frac{1}{4}(1+\frac{2x}{a})(1-\frac{2y}{b}) & 0 & \frac{1}{4}(1+\frac{2x}{a})(1+\frac{2y}{b}) & 0 & \frac{1}{4}(1-\frac{2x}{a})(1+\frac{2y}{b}) & 0 \\"
+            r"0 & \frac{1}{4}(1-\frac{2x}{a})(1-\frac{2y}{b}) & 0 & \frac{1}{4}(1+\frac{2x}{a})(1-\frac{2y}{b}) & 0 & \frac{1}{4}(1+\frac{2x}{a})(1+\frac{2y}{b}) & 0 & \frac{1}{4}(1-\frac{2x}{a})(1+\frac{2y}{b})"
+            r"\end{bmatrix}"
+        ).scale(0.25)
+        substituted_matrix.move_to(matrix_pos + UP * 0.2)
+        self.play(FadeIn(substituted_matrix))
+        
+        # Third matrix with specific form requested
+        numerical_matrix = MathTex(
+            r"\mathbf{N} = \begin{bmatrix}"
+            r"\frac{1}{12}(x-1)(2y-3) & 0 & -\frac{1}{12}(x+1)(2y-3) & 0 & \frac{1}{12}(x+1)(2y+3) & 0 & -\frac{1}{12}(x-1)(2y+3) & 0 \\"
+            r"0 & \frac{1}{12}(x-1)(2y-3) & 0 & -\frac{1}{12}(x+1)(2y-3) & 0 & \frac{1}{12}(x+1)(2y+3) & 0 & -\frac{1}{12}(x-1)(2y+3)"
+            r"\end{bmatrix}"
+        ).scale(0.275)  # 10% increase from 0.25
+        # Move left by 10% of screen width
+        numerical_matrix.move_to(matrix_pos + DOWN * 0.8 + LEFT * 0.1 * config.frame_width)
+        self.play(FadeIn(numerical_matrix))
 
         # ----- Final hold -----
         self.wait(3)
