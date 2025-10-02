@@ -1009,6 +1009,101 @@ class MESStructureScene(Scene):
         # Move left by 10% of screen width
         numerical_matrix.move_to(matrix_pos + DOWN * 0.8 + LEFT * 0.1 * config.frame_width)
         self.play(FadeIn(numerical_matrix))
+        
+        # ----- NEW ANIMATION STEPS START HERE -----
+        
+        # Step 1: Fade out the yellow box
+        self.play(FadeOut(second_final_result))
+        
+        # Step 2: Scale down miniatura_all (including a= and b= labels) by additional 20% and move up by 10% of screen height
+        miniatura_all_with_labels = VGroup(original_group, a_label, b_label)
+        self.play(
+            miniatura_all_with_labels.animate
+            .scale(0.8)  # Scale by 0.8 to get 20% reduction
+            .shift(UP * 0.1 * config.frame_height)  # Move up by 10% of screen height
+        )
+        
+        # Step 3: Scale down miniatura_mes by additional 20% and move up by 7% of screen height
+        self.play(
+            discretized_group.animate
+            .scale(0.8)  # Scale by 0.8 to get 20% reduction
+            .shift(UP * 0.07 * config.frame_height)  # Move up by 7% of screen height
+        )
+        
+        # Step 4: Remove all matrices except the last one
+        matrices_to_remove = VGroup(matrix_title, shape_matrix, substituted_matrix)
+        self.play(FadeOut(matrices_to_remove))
+        
+        # Step 5: Move the last matrix up under syn_el_1 and shift right (higher by 5% screen height)
+        final_matrix_pos = target_position + DOWN * 2.8 + UP * 0.1 * config.frame_height  # Higher by 5% of screen height
+        self.play(
+            numerical_matrix.animate.move_to(final_matrix_pos + RIGHT * 0.08 * config.frame_width)  # 8% right
+        )
+        
+        # ----- Step 6: Add strain-displacement derivations -----
+        derivation_start_pos = final_matrix_pos + DOWN * 1.2 + UP * 0.08 * config.frame_height  # Below the N matrix, raised by 8%
+        
+        # Small strains definition
+        strain_def_text = MathTex(r"\text{From the definition of small strains:}").scale(0.35)
+        strain_def_text.move_to(derivation_start_pos)
+        self.play(FadeIn(strain_def_text))
+        
+        strain_def_eq = MathTex(
+            r"\varepsilon_x = \frac{\partial u}{\partial x}, \quad "
+            r"\varepsilon_y = \frac{\partial v}{\partial y}, \quad "
+            r"\gamma_{xy} = \frac{\partial u}{\partial y} + \frac{\partial v}{\partial x}"
+        ).scale(0.3)
+        strain_def_eq.move_to(derivation_start_pos + DOWN * 0.4)
+        self.play(FadeIn(strain_def_eq))
+        
+        # Displacement interpolation
+        disp_interp_text = MathTex(r"\text{Displacement field is interpolated using shape functions:}").scale(0.35)
+        disp_interp_text.move_to(derivation_start_pos + DOWN * 0.8)
+        self.play(FadeIn(disp_interp_text))
+        
+        disp_interp_eq = MathTex(
+            r"u = \sum_{i=1}^{4} N_i u_i, \qquad v = \sum_{i=1}^{4} N_i v_i"
+        ).scale(0.3)
+        disp_interp_eq.move_to(derivation_start_pos + DOWN * 1.2)
+        self.play(FadeIn(disp_interp_eq))
+        
+        # Therefore text
+        therefore_text = MathTex(r"\text{Therefore:}").scale(0.35)
+        therefore_text.move_to(derivation_start_pos + DOWN * 1.6)
+        self.play(FadeIn(therefore_text))
+        
+        # Full strain-displacement equation with L and N matrices
+        strain_eq = MathTex(
+            r"\begin{bmatrix} \varepsilon_x \\ \varepsilon_y \\ \gamma_{xy} \end{bmatrix} = "
+            r"\begin{bmatrix} \frac{\partial}{\partial x} & 0 \\ 0 & \frac{\partial}{\partial y} \\ \frac{\partial}{\partial y} & \frac{\partial}{\partial x} \end{bmatrix} "
+            r"\begin{bmatrix} N_1 & 0 & N_2 & 0 & N_3 & 0 & N_4 & 0 \\ 0 & N_1 & 0 & N_2 & 0 & N_3 & 0 & N_4 \end{bmatrix} "
+            r"\begin{bmatrix} u_1 \\ v_1 \\ u_2 \\ v_2 \\ u_3 \\ v_3 \\ u_4 \\ v_4 \end{bmatrix} = B \, d"
+        ).scale(0.22)
+        strain_eq.move_to(derivation_start_pos + DOWN * 2.0)
+        self.play(FadeIn(strain_eq))
+        
+        # B matrix definition
+        b_matrix_text = MathTex(r"\text{where } B = L \, N \text{ has the form:}").scale(0.35)
+        b_matrix_text.move_to(derivation_start_pos + DOWN * 2.4)
+        self.play(FadeIn(b_matrix_text))
+        
+        # Compact B matrix
+        b_matrix = MathTex(
+            r"B = \begin{bmatrix}"
+            r"N_{1,x} & 0 & N_{2,x} & 0 & N_{3,x} & 0 & N_{4,x} & 0 \\"
+            r"0 & N_{1,y} & 0 & N_{2,y} & 0 & N_{3,y} & 0 & N_{4,y} \\"
+            r"N_{1,y} & N_{1,x} & N_{2,y} & N_{2,x} & N_{3,y} & N_{3,x} & N_{4,y} & N_{4,x}"
+            r"\end{bmatrix}"
+        ).scale(0.25)
+        b_matrix.move_to(derivation_start_pos + DOWN * 3.0)
+        self.play(FadeIn(b_matrix))
+        
+        # Derivatives definition - positioned to the right of B matrix at same height
+        derivatives_def = MathTex(
+            r"N_{i,x} = \frac{\partial N_i}{\partial x}, \qquad N_{i,y} = \frac{\partial N_i}{\partial y}"
+        ).scale(0.3)
+        derivatives_def.move_to(derivation_start_pos + DOWN * 3.0 + RIGHT * 3.5)  # Same height as B matrix, to the right
+        self.play(FadeIn(derivatives_def))
 
         # ----- Final hold -----
         self.wait(3)
