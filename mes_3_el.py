@@ -1105,6 +1105,60 @@ class MESStructureScene(Scene):
         derivatives_def.move_to(derivation_start_pos + DOWN * 3.0 + RIGHT * 3.5)  # Same height as B matrix, to the right
         self.play(FadeIn(derivatives_def))
 
+        # ----- Step 7: New animation steps -----
+        
+        # Step 7a: Remove derivations from "From the definition..." to "has the form"
+        elements_to_remove = VGroup(
+            strain_def_text, strain_def_eq, disp_interp_text, disp_interp_eq,
+            therefore_text, strain_eq, b_matrix_text
+        )
+        self.play(FadeOut(elements_to_remove))
+        
+        # Step 7b: Move B matrix and derivatives under N matrix (5% higher)
+        b_matrix_pos = final_matrix_pos + DOWN * 1.0 + UP * 0.05 * config.frame_height  # 5% higher
+        
+        # Move existing B matrix and derivatives
+        self.play(
+            b_matrix.animate.move_to(b_matrix_pos),
+            derivatives_def.animate.move_to(b_matrix_pos + RIGHT * 3.5)
+        )
+        
+        # Step 7c: Show derivative calculation for first component (10% higher - reduced by 5%)
+        calc_pos = b_matrix_pos + DOWN * 1.5 + UP * 0.10 * config.frame_height  # 10% higher (was 15%, now reduced by 5%)
+        
+        # Compact calculation in one line
+        calc_example = MathTex(
+            r"\text{Example: } N_1 = \frac{1}{12}(x-1)(2y-3) \Rightarrow \frac{\partial N_1}{\partial y} = \frac{1}{12}(x-1)"
+        ).scale(0.3)
+        calc_example.move_to(calc_pos)
+        self.play(FadeIn(calc_example))
+        
+        # Step 7d: Show all derivatives in compact form
+        all_derivatives = MathTex(
+            r"N_{1,x} = \frac{1}{12}(2y-3), N_{1,y} = \frac{1}{12}(x-1), "
+            r"N_{2,x} = -\frac{1}{12}(2y-3), N_{2,y} = -\frac{1}{12}(x+1)"
+        ).scale(0.25)
+        all_derivatives.move_to(calc_pos + DOWN * 0.5)
+        self.play(FadeIn(all_derivatives))
+        
+        all_derivatives2 = MathTex(
+            r"N_{3,x} = \frac{1}{12}(2y+3), N_{3,y} = \frac{1}{12}(x+1), "
+            r"N_{4,x} = -\frac{1}{12}(2y+3), N_{4,y} = -\frac{1}{12}(x-1)"
+        ).scale(0.25)
+        all_derivatives2.move_to(calc_pos + DOWN * 0.8)
+        self.play(FadeIn(all_derivatives2))
+        
+        # Show complete B matrix with calculated values (15% larger)
+        full_b_matrix = MathTex(
+            r"B = \frac{1}{12}\begin{bmatrix}"
+            r"(2y-3) & 0 & -(2y-3) & 0 & (2y+3) & 0 & -(2y+3) & 0 \\"
+            r"0 & (x-1) & 0 & -(x+1) & 0 & (x+1) & 0 & -(x-1) \\"
+            r"(x-1) & (2y-3) & -(x+1) & -(2y-3) & (x+1) & (2y+3) & -(x-1) & -(2y+3)"
+            r"\end{bmatrix}"
+        ).scale(0.28)  # Larger font for better readability
+        full_b_matrix.move_to(calc_pos + DOWN * 1.5)  # Much closer
+        self.play(FadeIn(full_b_matrix))
+
         # ----- Final hold -----
         self.wait(3)
 
