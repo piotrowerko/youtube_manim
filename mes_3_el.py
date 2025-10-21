@@ -1159,6 +1159,54 @@ class MESStructureScene(Scene):
         full_b_matrix.move_to(calc_pos + DOWN * 1.5)  # Much closer
         self.play(FadeIn(full_b_matrix))
 
+        # ----- Step 8: New animation steps -----
+        
+        # Step 8a: Remove everything except numerical B matrix
+        elements_to_remove_step8 = VGroup(
+            calc_example, all_derivatives, all_derivatives2,
+            b_matrix, derivatives_def,  # Remove symbolic B matrix and derivatives definitions
+            numerical_matrix  # Remove the full N matrix as well
+        )
+        self.play(FadeOut(elements_to_remove_step8))
+        
+        # Step 8b: Move B matrix up by 25% of screen height
+        b_matrix_final_pos = full_b_matrix.get_center() + UP * 0.25 * config.frame_height
+        self.play(full_b_matrix.animate.move_to(b_matrix_final_pos))
+        
+        # Step 8c: Introduce elasticity matrix D
+        d_matrix_pos = b_matrix_final_pos + DOWN * 2.0  # Below B matrix
+        
+        d_matrix_title = MathTex(r"\text{Elasticity matrix for plane stress:}").scale(0.4)
+        d_matrix_title.move_to(d_matrix_pos + UP * 0.5)
+        self.play(FadeIn(d_matrix_title))
+        
+        # Symbolic and numerical D matrices side by side (closer together)
+        d_matrix_symbolic = MathTex(
+            r"\mathbf{D} = \frac{E}{1-\nu^2} \begin{bmatrix}"
+            r"1 & \nu & 0 \\"
+            r"\nu & 1 & 0 \\"
+            r"0 & 0 & \frac{1-\nu}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.35)
+        d_matrix_symbolic.move_to(d_matrix_pos + LEFT * 1.2)  # Closer to center
+        self.play(FadeIn(d_matrix_symbolic))
+        
+        # Equals sign
+        equals_sign = MathTex(r"=").scale(0.5)
+        equals_sign.move_to(d_matrix_pos + RIGHT * 0.2)  # Slightly right of center
+        self.play(FadeIn(equals_sign))
+        
+        # Numerical D matrix
+        d_matrix_numerical = MathTex(
+            r"\begin{bmatrix}"
+            r"85.5 & 29.9 & 0 \\"
+            r"29.9 & 85.5 & 0 \\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+        ).scale(0.35)
+        d_matrix_numerical.move_to(d_matrix_pos + RIGHT * 1.4)  # Closer to center
+        self.play(FadeIn(d_matrix_numerical))
+
         # ----- Final hold -----
         self.wait(3)
 
