@@ -1173,8 +1173,8 @@ class MESStructureScene(Scene):
         b_matrix_final_pos = full_b_matrix.get_center() + UP * 0.25 * config.frame_height
         self.play(full_b_matrix.animate.move_to(b_matrix_final_pos))
         
-        # Step 8c: Introduce elasticity matrix D
-        d_matrix_pos = b_matrix_final_pos + DOWN * 2.0  # Below B matrix
+        # Step 8c: Introduce elasticity matrix D (8% higher)
+        d_matrix_pos = b_matrix_final_pos + DOWN * 2.0 + UP * 0.08 * config.frame_height  # 8% higher
         
         d_matrix_title = MathTex(r"\text{Elasticity matrix for plane stress:}").scale(0.4)
         d_matrix_title.move_to(d_matrix_pos + UP * 0.5)
@@ -1207,9 +1207,127 @@ class MESStructureScene(Scene):
         d_matrix_numerical.move_to(d_matrix_pos + RIGHT * 1.4)  # Closer to center
         self.play(FadeIn(d_matrix_numerical))
 
+        # ----- Step 9: Show transposed B matrix -----
+        
+        # Step 9a: Remove B matrix and move D matrix to the left
+        self.play(FadeOut(full_b_matrix))
+        
+        # Move D matrix elements to the left (additional 10% screen width)
+        d_matrix_group = VGroup(d_matrix_title, d_matrix_symbolic, equals_sign, d_matrix_numerical)
+        self.play(d_matrix_group.animate.shift(LEFT * (3.0 + 0.1 * config.frame_width)))
+        
+        # Step 9b: Show transposed B matrix (6% lower to make room for horizontal dimensions)
+        bt_matrix_pos = b_matrix_final_pos + DOWN * 0.06 * config.frame_height  # 6% lower
+        
+        bt_matrix_title = MathTex(r"\text{Transposed B matrix:}").scale(0.4)
+        bt_matrix_title.move_to(bt_matrix_pos + UP * 1.0)  # Above the matrix
+        self.play(FadeIn(bt_matrix_title))
+        
+        # B^T matrix with given values (larger font for better readability)
+        bt_matrix = MathTex(
+            r"\mathbf{B}^T = \begin{bmatrix}"
+            r"\frac{1}{6}y - \frac{1}{4} & 0 & \frac{1}{6}x - \frac{1}{6} \\"
+            r"0 & \frac{1}{6}x - \frac{1}{6} & \frac{1}{6}y - \frac{1}{4} \\"
+            r"-\frac{1}{6}y + \frac{1}{4} & 0 & -\frac{1}{6}x - \frac{1}{6} \\"
+            r"0 & -\frac{1}{6}x - \frac{1}{6} & -\frac{1}{6}y + \frac{1}{4} \\"
+            r"\frac{1}{6}y + \frac{1}{4} & 0 & \frac{1}{6}x + \frac{1}{6} \\"
+            r"0 & \frac{1}{6}x + \frac{1}{6} & \frac{1}{6}y + \frac{1}{4} \\"
+            r"-\frac{1}{6}y - \frac{1}{4} & 0 & -\frac{1}{6}x + \frac{1}{6} \\"
+            r"0 & -\frac{1}{6}x + \frac{1}{6} & -\frac{1}{6}y - \frac{1}{4}"
+            r"\end{bmatrix}"
+        ).scale(0.3)  # Increased from 0.25 to 0.3 for better readability
+        bt_matrix.move_to(bt_matrix_pos)
+        self.play(FadeIn(bt_matrix))
+        
+        # Show stiffness matrix integral formula (higher position)
+        integral_pos = bt_matrix_pos + DOWN * 2.0  # Higher position
+        
+        integral_title = MathTex(r"\text{Element stiffness matrix:}").scale(0.4)
+        integral_title.move_to(integral_pos + UP * 0.5)
+        self.play(FadeIn(integral_title))
+        
+        # Integral formula with correct double integral (2 integral signs)
+        integral_formula = MathTex(
+            r"\mathbf{K}_1 = \int_{-1.5}^{1.5} \int_{-1}^{1} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dx \, dy"
+        ).scale(0.35)
+        integral_formula.move_to(integral_pos)
+        self.play(FadeIn(integral_formula))
+        
+        # Add dimensions to syn_el_1 showing integration limits (outside the element)
+        # a) Dimension showing 1.5 from center to edge (vertical, to the right of element)
+        dim_15_start = target_position + RIGHT * 1.5  # Outside element, to the right
+        dim_15 = DoubleArrow(
+            dim_15_start,  # Start outside element
+            dim_15_start + UP * 0.75,  # Half height up
+            buff=0.02,
+            stroke_width=2,
+            max_tip_length_to_length_ratio=0.1,
+            color=GREEN
+        )
+        dim_15_label = MathTex(r"\mathbf{1.5}").scale(0.35).next_to(dim_15, RIGHT, buff=0.1)  # Bold when showing
+        self.play(Create(dim_15), FadeIn(dim_15_label))
+        
+        # b) Dimension showing -1.5 from center to edge (vertical, to the right of element)
+        dim_neg15 = DoubleArrow(
+            dim_15_start,  # Start outside element
+            dim_15_start + DOWN * 0.75,  # Half height down
+            buff=0.02,
+            stroke_width=2,
+            max_tip_length_to_length_ratio=0.1,
+            color=GREEN
+        )
+        dim_neg15_label = MathTex(r"\mathbf{-1.5}").scale(0.35).next_to(dim_neg15, RIGHT, buff=0.1)  # Bold when showing
+        self.play(Create(dim_neg15), FadeIn(dim_neg15_label))
+        
+        # c) Dimension showing 1 from center to edge (horizontal, below element)
+        dim_1_start = target_position + DOWN * 1.8  # Outside element, below
+        dim_1 = DoubleArrow(
+            dim_1_start,  # Start outside element
+            dim_1_start + RIGHT * 0.6,  # Half width right
+            buff=0.02,
+            stroke_width=2,
+            max_tip_length_to_length_ratio=0.1,
+            color=BLUE
+        )
+        dim_1_label = MathTex(r"\mathbf{1}").scale(0.35).next_to(dim_1, DOWN, buff=0.1)  # Bold when showing
+        self.play(Create(dim_1), FadeIn(dim_1_label))
+        # Note: Individual number highlighting would be done manually if needed
+        
+        # d) Dimension showing -1 from center to edge (horizontal, below element)
+        dim_neg1 = DoubleArrow(
+            dim_1_start,  # Start outside element
+            dim_1_start + LEFT * 0.6,  # Half width left
+            buff=0.02,
+            stroke_width=2,
+            max_tip_length_to_length_ratio=0.1,
+            color=BLUE
+        )
+        dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.35).next_to(dim_neg1, DOWN, buff=0.1)  # Bold when showing
+        self.play(Create(dim_neg1), FadeIn(dim_neg1_label))
+
         # ----- Final hold -----
         self.wait(3)
 
 if __name__ == "__main__":
+    import sys
+    
+
+    # Low quality, fast rendering for testing
+    from manim import config
+    config.quality = "low_quality"  # 480p15 - much faster
+    config.frame_rate = 15
+    config.pixel_height = 480
+    config.pixel_width = 854
+    print("🚀 Quick render mode: 480p15 for fast testing")
+
+    # # Medium quality for preview
+    # from manim import config
+    # config.quality = "medium_quality"  # 720p30
+    # config.frame_rate = 30
+    # config.pixel_height = 720
+    # config.pixel_width = 1280
+    # print("⚡ Medium render mode: 720p30 for preview")
+
+    
     scene = MESStructureScene()
     scene.render()
