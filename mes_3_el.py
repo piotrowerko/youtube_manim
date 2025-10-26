@@ -1209,12 +1209,17 @@ class MESStructureScene(Scene):
 
         # ----- Step 9: Show transposed B matrix -----
         
-        # Step 9a: Remove B matrix and move D matrix to the left
-        self.play(FadeOut(full_b_matrix))
-        
+        # Step 9a: Shrink B matrix and move to the right, move D matrix to the left
         # Move D matrix elements to the left (additional 10% screen width)
         d_matrix_group = VGroup(d_matrix_title, d_matrix_symbolic, equals_sign, d_matrix_numerical)
         self.play(d_matrix_group.animate.shift(LEFT * (3.0 + 0.1 * config.frame_width)))
+        
+        # Shrink and move B matrix to the right
+        self.play(
+            full_b_matrix.animate
+            .scale(0.7)  # Shrink by 30%
+            .shift(RIGHT * 4.0)  # Move to the right
+        )
         
         # Step 9b: Show transposed B matrix (6% lower to make room for horizontal dimensions)
         bt_matrix_pos = b_matrix_final_pos + DOWN * 0.06 * config.frame_height  # 6% lower
@@ -1253,57 +1258,176 @@ class MESStructureScene(Scene):
         integral_formula.move_to(integral_pos)
         self.play(FadeIn(integral_formula))
         
-        # Add dimensions to syn_el_1 showing integration limits (outside the element)
-        # a) Dimension showing 1.5 from center to edge (vertical, to the right of element)
-        dim_15_start = target_position + RIGHT * 1.5  # Outside element, to the right
-        dim_15 = DoubleArrow(
-            dim_15_start,  # Start outside element
-            dim_15_start + UP * 0.75,  # Half height up
-            buff=0.02,
-            stroke_width=2,
-            max_tip_length_to_length_ratio=0.1,
-            color=GREEN
-        )
-        dim_15_label = MathTex(r"\mathbf{1.5}").scale(0.35).next_to(dim_15, RIGHT, buff=0.1)  # Bold when showing
-        self.play(Create(dim_15), FadeIn(dim_15_label))
+        # Sequential demonstration of integration limits with dimensions and boundary functions
+        # Get actual syn_el_1 boundaries
+        elem_half_width_full = 1.2 * target_scale  # Full half width
+        elem_half_width = elem_half_width_full * 0.35  # Shortened by 65% total (35% + 30% additional)
+        elem_half_width_left = elem_half_width_full * 0.55  # Left side trimmed by 45% total (15% + 30%)
+        elem_half_width_right = elem_half_width_full * 0.65  # Right side trimmed by 35% total (5% + 30%)
+        elem_half_height = 0.9 * target_scale  # Half height of syn_el_1
         
-        # b) Dimension showing -1.5 from center to edge (vertical, to the right of element)
-        dim_neg15 = DoubleArrow(
-            dim_15_start,  # Start outside element
-            dim_15_start + DOWN * 0.75,  # Half height down
-            buff=0.02,
-            stroke_width=2,
-            max_tip_length_to_length_ratio=0.1,
-            color=GREEN
-        )
-        dim_neg15_label = MathTex(r"\mathbf{-1.5}").scale(0.35).next_to(dim_neg15, RIGHT, buff=0.1)  # Bold when showing
-        self.play(Create(dim_neg15), FadeIn(dim_neg15_label))
+        # a) Show 1.5 limit: highlight in integral + vertical dimension + top boundary function
+        # Highlight 1.5 in integral (create new integral with highlighted 1.5)
+        integral_formula_highlighted_15 = MathTex(
+            r"\mathbf{K}_1 = \int_{-1.5}^{\mathbf{1.5}} \int_{-1}^{1} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dx \, dy"
+        ).scale(0.35)
+        integral_formula_highlighted_15.move_to(integral_pos)
+        self.play(Transform(integral_formula, integral_formula_highlighted_15))
         
-        # c) Dimension showing 1 from center to edge (horizontal, below element)
-        dim_1_start = target_position + DOWN * 1.8  # Outside element, below
-        dim_1 = DoubleArrow(
-            dim_1_start,  # Start outside element
-            dim_1_start + RIGHT * 0.6,  # Half width right
-            buff=0.02,
-            stroke_width=2,
-            max_tip_length_to_length_ratio=0.1,
-            color=BLUE
+        # Vertical dimension 1.5 (from center to top edge, extended by 10%, moved right by 2%)
+        dim_15_x = target_position[0] + elem_half_width + 0.3 + 0.02 * config.frame_width
+        dim_15_line = Line(
+            [dim_15_x, target_position[1], 0],
+            [dim_15_x, target_position[1] + elem_half_height * 1.1, 0],  # Extended by 10%
+            stroke_width=2, color=GREEN
         )
-        dim_1_label = MathTex(r"\mathbf{1}").scale(0.35).next_to(dim_1, DOWN, buff=0.1)  # Bold when showing
-        self.play(Create(dim_1), FadeIn(dim_1_label))
-        # Note: Individual number highlighting would be done manually if needed
+        dim_15_tick_top = Line(
+            [dim_15_x - 0.1, target_position[1] + elem_half_height * 1.1, 0],
+            [dim_15_x + 0.1, target_position[1] + elem_half_height * 1.1, 0],
+            stroke_width=2, color=GREEN
+        )
+        dim_15_tick_center = Line(
+            [dim_15_x - 0.1, target_position[1], 0],
+            [dim_15_x + 0.1, target_position[1], 0],
+            stroke_width=2, color=GREEN
+        )
+        dim_15_label = MathTex(r"\mathbf{1.5}").scale(0.3).move_to([dim_15_x + 0.25, target_position[1] + elem_half_height/2, 0])
+        dim_15_group = VGroup(dim_15_line, dim_15_tick_top, dim_15_tick_center, dim_15_label)
         
-        # d) Dimension showing -1 from center to edge (horizontal, below element)
-        dim_neg1 = DoubleArrow(
-            dim_1_start,  # Start outside element
-            dim_1_start + LEFT * 0.6,  # Half width left
-            buff=0.02,
-            stroke_width=2,
-            max_tip_length_to_length_ratio=0.1,
-            color=BLUE
+        # Top boundary function y = 1.5 (7% higher total: 5% + 2%)
+        top_boundary = DashedLine(
+            target_position + LEFT * elem_half_width_full + UP * elem_half_height * 1.07,  # 7% higher
+            target_position + RIGHT * elem_half_width_full + UP * elem_half_height * 1.07,
+            stroke_width=4, color=GREEN, dash_length=0.1
         )
-        dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.35).next_to(dim_neg1, DOWN, buff=0.1)  # Bold when showing
-        self.play(Create(dim_neg1), FadeIn(dim_neg1_label))
+        top_boundary_label = MathTex(r"y = 1.5").scale(0.25)
+        top_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + UP * elem_half_height * 1.07 + UP * 0.15)  # 5% left, 2% higher
+        
+        # Dramatic highlighting of 1.5 - grows from integral position
+        integral_temp_large = MathTex(r"\mathbf{1.5}").scale(0.35).set_color(GREEN)
+        integral_temp_large.move_to(integral_pos)  # Start at integral position
+        
+        self.play(
+            Create(dim_15_group), Create(top_boundary), FadeIn(top_boundary_label),
+            integral_temp_large.animate.scale(3.0).move_to(integral_pos + UP * 0.8)  # Grow and move up
+        )
+        self.wait(0.5)
+        self.play(integral_temp_large.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back to original
+        self.play(FadeOut(integral_temp_large))
+        
+        # b) Show -1.5 limit: highlight in integral + vertical dimension + bottom boundary function
+        integral_formula_highlighted_neg15 = MathTex(
+            r"\mathbf{K}_1 = \int_{\mathbf{-1.5}}^{1.5} \int_{-1}^{1} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dx \, dy"
+        ).scale(0.35)
+        integral_formula_highlighted_neg15.move_to(integral_pos)
+        self.play(Transform(integral_formula, integral_formula_highlighted_neg15))
+        
+        # Vertical dimension -1.5 (from center to bottom edge)
+        dim_neg15_line = Line(
+            [dim_15_x, target_position[1], 0],
+            [dim_15_x, target_position[1] - elem_half_height, 0],
+            stroke_width=2, color=GREEN
+        )
+        dim_neg15_tick_bottom = Line(
+            [dim_15_x - 0.1, target_position[1] - elem_half_height, 0],
+            [dim_15_x + 0.1, target_position[1] - elem_half_height, 0],
+            stroke_width=2, color=GREEN
+        )
+        dim_neg15_label = MathTex(r"\mathbf{-1.5}").scale(0.3).move_to([dim_15_x + 0.3, target_position[1] - elem_half_height/2, 0])
+        dim_neg15_group = VGroup(dim_neg15_line, dim_neg15_tick_bottom, dim_neg15_label)
+        
+        # Bottom boundary function y = -1.5
+        bottom_boundary = DashedLine(
+            target_position + LEFT * elem_half_width_full + DOWN * elem_half_height,
+            target_position + RIGHT * elem_half_width_full + DOWN * elem_half_height,
+            stroke_width=4, color=GREEN, dash_length=0.1
+        )
+        bottom_boundary_label = MathTex(r"y = -1.5").scale(0.25)
+        bottom_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + DOWN * elem_half_height - DOWN * 0.15)  # 5% left of previous
+        
+        # Dramatic highlighting of -1.5 - grows from integral position
+        integral_temp_large_neg15 = MathTex(r"\mathbf{-1.5}").scale(0.35).set_color(GREEN)
+        integral_temp_large_neg15.move_to(integral_pos)  # Start at integral position
+        
+        self.play(
+            Create(dim_neg15_group), Create(bottom_boundary), FadeIn(bottom_boundary_label),
+            integral_temp_large_neg15.animate.scale(3.0).move_to(integral_pos + DOWN * 0.8)  # Grow and move down
+        )
+        self.wait(0.5)
+        self.play(integral_temp_large_neg15.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(FadeOut(integral_temp_large_neg15))
+        
+        # c) Show 1 limit: highlight in integral + horizontal dimension
+        integral_formula_highlighted_1 = MathTex(
+            r"\mathbf{K}_1 = \int_{-1.5}^{1.5} \int_{-1}^{\mathbf{1}} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dx \, dy"
+        ).scale(0.35)
+        integral_formula_highlighted_1.move_to(integral_pos)
+        self.play(Transform(integral_formula, integral_formula_highlighted_1))
+        
+        # Horizontal dimension 1 (from center to right edge, below element, trimmed by 5%)
+        dim_1_y = target_position[1] - elem_half_height - 0.4 - 0.04 * config.frame_height  # Below element, 4% lower
+        dim_1_line = Line(
+            [target_position[0], dim_1_y, 0],  # Center
+            [target_position[0] + elem_half_width_right, dim_1_y, 0],  # Right edge (trimmed by 5%)
+            stroke_width=2, color=BLUE
+        )
+        dim_1_tick_right = Line(
+            [target_position[0] + elem_half_width_right, dim_1_y - 0.1, 0],
+            [target_position[0] + elem_half_width_right, dim_1_y + 0.1, 0],
+            stroke_width=2, color=BLUE
+        )
+        dim_1_tick_center = Line(
+            [target_position[0], dim_1_y - 0.1, 0],
+            [target_position[0], dim_1_y + 0.1, 0],
+            stroke_width=2, color=BLUE
+        )
+        dim_1_label = MathTex(r"\mathbf{1}").scale(0.3).move_to([target_position[0] + elem_half_width_right/2, dim_1_y - 0.2, 0])
+        dim_1_group = VGroup(dim_1_line, dim_1_tick_right, dim_1_tick_center, dim_1_label)
+        
+        # Dramatic highlighting of 1 - grows from integral position
+        integral_temp_large_1 = MathTex(r"\mathbf{1}").scale(0.35).set_color(BLUE)
+        integral_temp_large_1.move_to(integral_pos)  # Start at integral position
+        
+        self.play(
+            Create(dim_1_group),
+            integral_temp_large_1.animate.scale(3.0).move_to(integral_pos + RIGHT * 1.0)  # Grow and move right
+        )
+        self.wait(0.5)
+        self.play(integral_temp_large_1.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(FadeOut(integral_temp_large_1))
+        
+        # d) Show -1 limit: highlight in integral + horizontal dimension  
+        integral_formula_highlighted_neg1 = MathTex(
+            r"\mathbf{K}_1 = \int_{-1.5}^{1.5} \int_{\mathbf{-1}}^{1} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dx \, dy"
+        ).scale(0.35)
+        integral_formula_highlighted_neg1.move_to(integral_pos)
+        self.play(Transform(integral_formula, integral_formula_highlighted_neg1))
+        
+        # Horizontal dimension -1 (from center to left edge, below element, shortened by 35%)
+        dim_neg1_line = Line(
+            [target_position[0], dim_1_y, 0],  # Center
+            [target_position[0] - elem_half_width_left, dim_1_y, 0],  # Left edge (trimmed by 15%)
+            stroke_width=2, color=BLUE
+        )
+        dim_neg1_tick_left = Line(
+            [target_position[0] - elem_half_width_left, dim_1_y - 0.1, 0],
+            [target_position[0] - elem_half_width_left, dim_1_y + 0.1, 0],
+            stroke_width=2, color=BLUE
+        )
+        dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.3).move_to([target_position[0] - elem_half_width_left/2, dim_1_y - 0.2, 0])
+        dim_neg1_group = VGroup(dim_neg1_line, dim_neg1_tick_left, dim_neg1_label)
+        
+        # Dramatic highlighting of -1 - grows from integral position
+        integral_temp_large_neg1 = MathTex(r"\mathbf{-1}").scale(0.35).set_color(BLUE)
+        integral_temp_large_neg1.move_to(integral_pos)  # Start at integral position
+        
+        self.play(
+            Create(dim_neg1_group),
+            integral_temp_large_neg1.animate.scale(3.0).move_to(integral_pos + LEFT * 1.0)  # Grow and move left
+        )
+        self.wait(0.5)
+        self.play(integral_temp_large_neg1.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(FadeOut(integral_temp_large_neg1))
 
         # ----- Final hold -----
         self.wait(3)
@@ -1313,12 +1437,12 @@ if __name__ == "__main__":
     
 
     # Low quality, fast rendering for testing
-    from manim import config
-    config.quality = "low_quality"  # 480p15 - much faster
-    config.frame_rate = 15
-    config.pixel_height = 480
-    config.pixel_width = 854
-    print("🚀 Quick render mode: 480p15 for fast testing")
+    # from manim import config
+    # config.quality = "low_quality"  # 480p15 - much faster
+    # config.frame_rate = 15
+    # config.pixel_height = 480
+    # config.pixel_width = 854
+    # print("🚀 Quick render mode: 480p15 for fast testing")
 
     # # Medium quality for preview
     # from manim import config
