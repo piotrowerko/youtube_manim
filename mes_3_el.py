@@ -1262,8 +1262,8 @@ class MESStructureScene(Scene):
         # Get actual syn_el_1 boundaries
         elem_half_width_full = 1.2 * target_scale  # Full half width
         elem_half_width = elem_half_width_full * 0.35  # Shortened by 65% total (35% + 30% additional)
-        elem_half_width_left = elem_half_width_full * 0.55  # Left side trimmed by 45% total (15% + 30%)
-        elem_half_width_right = elem_half_width_full * 0.65  # Right side trimmed by 35% total (5% + 30%)
+        elem_half_width_left = elem_half_width_full * 0.45  # Left side trimmed by 45% total (15% + 30%)
+        elem_half_width_right = elem_half_width_full * 0.60  # Right side trimmed by 35% total (5% + 30%)
         elem_half_height = 0.9 * target_scale  # Half height of syn_el_1
         
         # a) Show 1.5 limit: highlight in integral + vertical dimension + top boundary function
@@ -1294,25 +1294,26 @@ class MESStructureScene(Scene):
         dim_15_label = MathTex(r"\mathbf{1.5}").scale(0.3).move_to([dim_15_x + 0.25, target_position[1] + elem_half_height/2, 0])
         dim_15_group = VGroup(dim_15_line, dim_15_tick_top, dim_15_tick_center, dim_15_label)
         
-        # Top boundary function y = 1.5 (7% higher total: 5% + 2%)
+        # Top boundary function y = 1.5 (9% higher total: 5% + 2% + 2%)
         top_boundary = DashedLine(
-            target_position + LEFT * elem_half_width_full + UP * elem_half_height * 1.07,  # 7% higher
-            target_position + RIGHT * elem_half_width_full + UP * elem_half_height * 1.07,
+            target_position + LEFT * elem_half_width_full + UP * elem_half_height * 1.12,  # 9% higher
+            target_position + RIGHT * elem_half_width_full + UP * elem_half_height * 1.12,
             stroke_width=4, color=GREEN, dash_length=0.1
         )
         top_boundary_label = MathTex(r"y = 1.5").scale(0.25)
-        top_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + UP * elem_half_height * 1.07 + UP * 0.15)  # 5% left, 2% higher
+        top_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + UP * elem_half_height * 1.12 + UP * 0.15)  # Updated position
         
-        # Dramatic highlighting of 1.5 - grows from integral position
+        # Dramatic highlighting of 1.5 - grows from the specific "1.5" position in integral
+        integral_15_pos = integral_pos + RIGHT * 0.8 + UP * 0.1  # Approximate position of "1.5" in integral
         integral_temp_large = MathTex(r"\mathbf{1.5}").scale(0.35).set_color(GREEN)
-        integral_temp_large.move_to(integral_pos)  # Start at integral position
+        integral_temp_large.move_to(integral_15_pos)  # Start at the "1.5" position
         
         self.play(
             Create(dim_15_group), Create(top_boundary), FadeIn(top_boundary_label),
             integral_temp_large.animate.scale(3.0).move_to(integral_pos + UP * 0.8)  # Grow and move up
         )
         self.wait(0.5)
-        self.play(integral_temp_large.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back to original
+        self.play(integral_temp_large.animate.scale(1/3.0).move_to(integral_15_pos))  # Shrink back to "1.5" position
         self.play(FadeOut(integral_temp_large))
         
         # b) Show -1.5 limit: highlight in integral + vertical dimension + bottom boundary function
@@ -1345,16 +1346,17 @@ class MESStructureScene(Scene):
         bottom_boundary_label = MathTex(r"y = -1.5").scale(0.25)
         bottom_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + DOWN * elem_half_height - DOWN * 0.15)  # 5% left of previous
         
-        # Dramatic highlighting of -1.5 - grows from integral position
+        # Dramatic highlighting of -1.5 - grows from the specific "-1.5" position in integral
+        integral_neg15_pos = integral_pos + LEFT * 0.5 + UP * 0.1  # Approximate position of "-1.5" in integral
         integral_temp_large_neg15 = MathTex(r"\mathbf{-1.5}").scale(0.35).set_color(GREEN)
-        integral_temp_large_neg15.move_to(integral_pos)  # Start at integral position
+        integral_temp_large_neg15.move_to(integral_neg15_pos)  # Start at the "-1.5" position
         
         self.play(
             Create(dim_neg15_group), Create(bottom_boundary), FadeIn(bottom_boundary_label),
             integral_temp_large_neg15.animate.scale(3.0).move_to(integral_pos + DOWN * 0.8)  # Grow and move down
         )
         self.wait(0.5)
-        self.play(integral_temp_large_neg15.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(integral_temp_large_neg15.animate.scale(1/3.0).move_to(integral_neg15_pos))  # Shrink back to "-1.5" position
         self.play(FadeOut(integral_temp_large_neg15))
         
         # c) Show 1 limit: highlight in integral + horizontal dimension
@@ -1384,16 +1386,17 @@ class MESStructureScene(Scene):
         dim_1_label = MathTex(r"\mathbf{1}").scale(0.3).move_to([target_position[0] + elem_half_width_right/2, dim_1_y - 0.2, 0])
         dim_1_group = VGroup(dim_1_line, dim_1_tick_right, dim_1_tick_center, dim_1_label)
         
-        # Dramatic highlighting of 1 - grows from integral position
+        # Dramatic highlighting of 1 - grows from the specific "1" position in integral
+        integral_1_pos = integral_pos + RIGHT * 1.8 + UP * 0.1  # Approximate position of "1" in second integral
         integral_temp_large_1 = MathTex(r"\mathbf{1}").scale(0.35).set_color(BLUE)
-        integral_temp_large_1.move_to(integral_pos)  # Start at integral position
+        integral_temp_large_1.move_to(integral_1_pos)  # Start at the "1" position
         
         self.play(
             Create(dim_1_group),
             integral_temp_large_1.animate.scale(3.0).move_to(integral_pos + RIGHT * 1.0)  # Grow and move right
         )
         self.wait(0.5)
-        self.play(integral_temp_large_1.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(integral_temp_large_1.animate.scale(1/3.0).move_to(integral_1_pos))  # Shrink back to "1" position
         self.play(FadeOut(integral_temp_large_1))
         
         # d) Show -1 limit: highlight in integral + horizontal dimension  
@@ -1417,16 +1420,17 @@ class MESStructureScene(Scene):
         dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.3).move_to([target_position[0] - elem_half_width_left/2, dim_1_y - 0.2, 0])
         dim_neg1_group = VGroup(dim_neg1_line, dim_neg1_tick_left, dim_neg1_label)
         
-        # Dramatic highlighting of -1 - grows from integral position
+        # Dramatic highlighting of -1 - grows from the specific "-1" position in integral
+        integral_neg1_pos = integral_pos + RIGHT * 1.2 + UP * 0.1  # Approximate position of "-1" in second integral
         integral_temp_large_neg1 = MathTex(r"\mathbf{-1}").scale(0.35).set_color(BLUE)
-        integral_temp_large_neg1.move_to(integral_pos)  # Start at integral position
+        integral_temp_large_neg1.move_to(integral_neg1_pos)  # Start at the "-1" position
         
         self.play(
             Create(dim_neg1_group),
             integral_temp_large_neg1.animate.scale(3.0).move_to(integral_pos + LEFT * 1.0)  # Grow and move left
         )
         self.wait(0.5)
-        self.play(integral_temp_large_neg1.animate.scale(1/3.0).move_to(integral_pos))  # Shrink back
+        self.play(integral_temp_large_neg1.animate.scale(1/3.0).move_to(integral_neg1_pos))  # Shrink back to "-1" position
         self.play(FadeOut(integral_temp_large_neg1))
 
         # ----- Final hold -----
@@ -1455,3 +1459,6 @@ if __name__ == "__main__":
     
     scene = MESStructureScene()
     scene.render()
+
+    # w terminalu:
+    # manim -pqh -n 90, mes_3_el.py MESStructureScene+
