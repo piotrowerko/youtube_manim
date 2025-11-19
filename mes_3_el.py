@@ -1304,7 +1304,7 @@ class MESStructureScene(Scene):
         top_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + UP * elem_half_height * 1.12 + UP * 0.15)  # Updated position
         
         # Dramatic highlighting of 1.5 - grows from the specific "1.5" position in integral
-        integral_15_pos = integral_pos + RIGHT * 0.8 + UP * 0.1  # Approximate position of "1.5" in integral
+        integral_15_pos = integral_pos + RIGHT * (0.8 - 0.1 * config.frame_width) + UP * 0.1  # 10% left from previous position
         integral_temp_large = MathTex(r"\mathbf{1.5}").scale(0.35).set_color(GREEN)
         integral_temp_large.move_to(integral_15_pos)  # Start at the "1.5" position
         
@@ -1346,8 +1346,8 @@ class MESStructureScene(Scene):
         bottom_boundary_label = MathTex(r"y = -1.5").scale(0.25)
         bottom_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + DOWN * elem_half_height - DOWN * 0.15)  # 5% left of previous
         
-        # Dramatic highlighting of -1.5 - grows from the specific "-1.5" position in integral
-        integral_neg15_pos = integral_pos + LEFT * 0.5 + UP * 0.1  # Approximate position of "-1.5" in integral
+        # Dramatic highlighting of -1.5 - grows from the specific "-1.5" position in integral (lower position)
+        integral_neg15_pos = integral_pos + LEFT * 0.5 + DOWN * 0.1  # Lower position for bottom limit
         integral_temp_large_neg15 = MathTex(r"\mathbf{-1.5}").scale(0.35).set_color(GREEN)
         integral_temp_large_neg15.move_to(integral_neg15_pos)  # Start at the "-1.5" position
         
@@ -1386,8 +1386,8 @@ class MESStructureScene(Scene):
         dim_1_label = MathTex(r"\mathbf{1}").scale(0.3).move_to([target_position[0] + elem_half_width_right/2, dim_1_y - 0.2, 0])
         dim_1_group = VGroup(dim_1_line, dim_1_tick_right, dim_1_tick_center, dim_1_label)
         
-        # Dramatic highlighting of 1 - grows from the specific "1" position in integral
-        integral_1_pos = integral_pos + RIGHT * 1.8 + UP * 0.1  # Approximate position of "1" in second integral
+        # Dramatic highlighting of 1 - grows from the specific "1" position in integral (14% left)
+        integral_1_pos = integral_pos + RIGHT * (1.8 - 0.14 * config.frame_width) + UP * 0.1  # 14% left from previous position
         integral_temp_large_1 = MathTex(r"\mathbf{1}").scale(0.35).set_color(BLUE)
         integral_temp_large_1.move_to(integral_1_pos)  # Start at the "1" position
         
@@ -1420,8 +1420,8 @@ class MESStructureScene(Scene):
         dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.3).move_to([target_position[0] - elem_half_width_left/2, dim_1_y - 0.2, 0])
         dim_neg1_group = VGroup(dim_neg1_line, dim_neg1_tick_left, dim_neg1_label)
         
-        # Dramatic highlighting of -1 - grows from the specific "-1" position in integral
-        integral_neg1_pos = integral_pos + RIGHT * 1.2 + UP * 0.1  # Approximate position of "-1" in second integral
+        # Dramatic highlighting of -1 - grows from the specific "-1" position in integral (in down and right from "1")
+        integral_neg1_pos = integral_pos + RIGHT * (1.8 - 0.14 * config.frame_width) + DOWN * 0.1  # Same horizontal as "1" but lower
         integral_temp_large_neg1 = MathTex(r"\mathbf{-1}").scale(0.35).set_color(BLUE)
         integral_temp_large_neg1.move_to(integral_neg1_pos)  # Start at the "-1" position
         
@@ -1439,26 +1439,10 @@ class MESStructureScene(Scene):
 if __name__ == "__main__":
     import sys
     
-
-    # Low quality, fast rendering for testing
-    # from manim import config
-    # config.quality = "low_quality"  # 480p15 - much faster
-    # config.frame_rate = 15
-    # config.pixel_height = 480
-    # config.pixel_width = 854
-    # print("🚀 Quick render mode: 480p15 for fast testing")
-
-    # # Medium quality for preview
-    # from manim import config
-    # config.quality = "medium_quality"  # 720p30
-    # config.frame_rate = 30
-    # config.pixel_height = 720
-    # config.pixel_width = 1280
-    # print("⚡ Medium render mode: 720p30 for preview")
-
-    
     scene = MESStructureScene()
+
+
     scene.render()
 
-    # w terminalu:
-    # manim -pqh -n 90, mes_3_el.py MESStructureScene+
+    # manim -pql mes_3_el.py MESStructureScene --from_animation_number 90
+ 
