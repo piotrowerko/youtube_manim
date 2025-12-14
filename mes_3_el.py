@@ -641,7 +641,8 @@ class MESStructureScene(Scene):
         
         # Third: add coordinate system after positioning
         # Create L-shaped coordinate system at final position (center of syn_e1)
-        coord_origin = target_position
+        # coord_origin = target_position
+        coord_origin = elem1_copy_poly.get_center()
         coord_scale = 0.3  # small coordinate system
         
         # X-axis (horizontal) - main line to positive direction + small stub to negative
@@ -1260,11 +1261,20 @@ class MESStructureScene(Scene):
         
         # Sequential demonstration of integration limits with dimensions and boundary functions
         # Get actual syn_el_1 boundaries
-        elem_half_width_full = 1.2 * target_scale  # Full half width
-        elem_half_width = elem_half_width_full * 0.35  # Shortened by 65% total (35% + 30% additional)
-        elem_half_width_left = elem_half_width_full * 0.45  # Left side trimmed by 45% total (15% + 30%)
-        elem_half_width_right = elem_half_width_full * 0.60  # Right side trimmed by 35% total (5% + 30%)
-        elem_half_height = 0.9 * target_scale  # Half height of syn_el_1
+# --- widths from actual element geometry (fix left too short / right too long) ---
+        center_x = coord_origin[0]
+        center_y = coord_origin[1]
+        verts = elem1_copy_poly.get_vertices()
+        xs = [v[0] for v in verts]
+        ys = [v[1] for v in verts]
+
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        # half-widths / half-height measured from the real polygon geometry
+        elem_half_width_left  = center_x - min_x
+        elem_half_width_right = max_x - center_x
+        elem_half_height      = 0.5 * (max_y - min_y)
         
         # a) Show 1.5 limit: highlight in integral + vertical dimension + top boundary function
         # Highlight 1.5 in integral (create new integral with highlighted 1.5)
@@ -1275,20 +1285,20 @@ class MESStructureScene(Scene):
         self.play(Transform(integral_formula, integral_formula_highlighted_15))
         
         # Vertical dimension 1.5 (from center to top edge, extended by 10%, moved right by 2%)
-        dim_15_x = target_position[0] + elem_half_width + 0.3 + 0.02 * config.frame_width
+        dim_15_x = center_x + elem_half_width_right + 0.3 + 0.02 * config.frame_width
         dim_15_line = Line(
-            [dim_15_x, target_position[1], 0],
-            [dim_15_x, target_position[1] + elem_half_height * 1.1, 0],  # Extended by 10%
+            [dim_15_x, center_y, 0],
+            [dim_15_x, max_y, 0],
             stroke_width=2, color=GREEN
         )
         dim_15_tick_top = Line(
-            [dim_15_x - 0.1, target_position[1] + elem_half_height * 1.1, 0],
-            [dim_15_x + 0.1, target_position[1] + elem_half_height * 1.1, 0],
+            [dim_15_x - 0.1, max_y, 0],
+            [dim_15_x + 0.1, max_y, 0],
             stroke_width=2, color=GREEN
         )
         dim_15_tick_center = Line(
-            [dim_15_x - 0.1, target_position[1], 0],
-            [dim_15_x + 0.1, target_position[1], 0],
+            [dim_15_x - 0.1, center_y, 0],
+            [dim_15_x + 0.1, center_y, 0],
             stroke_width=2, color=GREEN
         )
         dim_15_label = MathTex(r"\mathbf{1.5}").scale(0.3).move_to([dim_15_x + 0.25, target_position[1] + elem_half_height/2, 0])
@@ -1296,12 +1306,17 @@ class MESStructureScene(Scene):
         
         # Top boundary function y = 1.5 (9% higher total: 5% + 2% + 2%)
         top_boundary = DashedLine(
-            target_position + LEFT * elem_half_width_full + UP * elem_half_height * 1.12,  # 9% higher
-            target_position + RIGHT * elem_half_width_full + UP * elem_half_height * 1.12,
+            [min_x, max_y, 0],
+            [max_x, max_y, 0],
             stroke_width=4, color=GREEN, dash_length=0.1
         )
         top_boundary_label = MathTex(r"y = 1.5").scale(0.25)
-        top_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + UP * elem_half_height * 1.12 + UP * 0.15)  # Updated position
+        top_boundary_label.move_to(
+                        target_position
+                        + RIGHT * elem_half_width_left  * 0.2
+                        + UP * elem_half_height * 1.12
+                        + UP * 0.15
+                    )
         
         # Dramatic highlighting of 1.5 - grows from the specific "1.5" position in integral
         integral_15_pos = integral_pos + RIGHT * (0.8 - 0.1 * config.frame_width) + UP * 0.1  # 10% left from previous position
@@ -1325,13 +1340,13 @@ class MESStructureScene(Scene):
         
         # Vertical dimension -1.5 (from center to bottom edge)
         dim_neg15_line = Line(
-            [dim_15_x, target_position[1], 0],
-            [dim_15_x, target_position[1] - elem_half_height, 0],
+            [dim_15_x, center_y, 0],
+            [dim_15_x, min_y, 0],
             stroke_width=2, color=GREEN
         )
         dim_neg15_tick_bottom = Line(
-            [dim_15_x - 0.1, target_position[1] - elem_half_height, 0],
-            [dim_15_x + 0.1, target_position[1] - elem_half_height, 0],
+            [dim_15_x - 0.1, min_y, 0],
+            [dim_15_x + 0.1, min_y, 0],
             stroke_width=2, color=GREEN
         )
         dim_neg15_label = MathTex(r"\mathbf{-1.5}").scale(0.3).move_to([dim_15_x + 0.3, target_position[1] - elem_half_height/2, 0])
@@ -1339,12 +1354,12 @@ class MESStructureScene(Scene):
         
         # Bottom boundary function y = -1.5
         bottom_boundary = DashedLine(
-            target_position + LEFT * elem_half_width_full + DOWN * elem_half_height,
-            target_position + RIGHT * elem_half_width_full + DOWN * elem_half_height,
+            [min_x, min_y, 0],
+            [max_x, min_y, 0],
             stroke_width=4, color=GREEN, dash_length=0.1
         )
         bottom_boundary_label = MathTex(r"y = -1.5").scale(0.25)
-        bottom_boundary_label.move_to(target_position + RIGHT * elem_half_width_full * 0.2 + DOWN * elem_half_height - DOWN * 0.15)  # 5% left of previous
+        bottom_boundary_label.move_to(target_position + RIGHT * elem_half_width_left * 0.2 + DOWN * elem_half_height - DOWN * 0.15)  # 5% left of previous
         
         # Dramatic highlighting of -1.5 - grows from the specific "-1.5" position in integral (lower position)
         integral_neg15_pos = integral_pos + LEFT * 0.5 + DOWN * 0.1  # Lower position for bottom limit
@@ -1367,23 +1382,23 @@ class MESStructureScene(Scene):
         self.play(Transform(integral_formula, integral_formula_highlighted_1))
         
         # Horizontal dimension 1 (from center to right edge, below element, trimmed by 5%)
-        dim_1_y = target_position[1] - elem_half_height - 0.4 - 0.04 * config.frame_height  # Below element, 4% lower
+        dim_1_y = center_y - elem_half_height - 0.4 - 0.04 * config.frame_height  # Below element, 4% lower
         dim_1_line = Line(
-            [target_position[0], dim_1_y, 0],  # Center
-            [target_position[0] + elem_half_width_right, dim_1_y, 0],  # Right edge (trimmed by 5%)
+            [center_x, dim_1_y, 0],
+            [center_x + elem_half_width_right, dim_1_y, 0],  # <-- zostaje, bo już jest pełne
             stroke_width=2, color=BLUE
         )
         dim_1_tick_right = Line(
-            [target_position[0] + elem_half_width_right, dim_1_y - 0.1, 0],
-            [target_position[0] + elem_half_width_right, dim_1_y + 0.1, 0],
+            [center_x + elem_half_width_right, dim_1_y - 0.1, 0],
+            [center_x + elem_half_width_right, dim_1_y + 0.1, 0],
             stroke_width=2, color=BLUE
         )
         dim_1_tick_center = Line(
-            [target_position[0], dim_1_y - 0.1, 0],
-            [target_position[0], dim_1_y + 0.1, 0],
+            [center_x, dim_1_y - 0.1, 0],
+            [center_x, dim_1_y + 0.1, 0],
             stroke_width=2, color=BLUE
         )
-        dim_1_label = MathTex(r"\mathbf{1}").scale(0.3).move_to([target_position[0] + elem_half_width_right/2, dim_1_y - 0.2, 0])
+        dim_1_label = MathTex(r"\mathbf{1}").scale(0.3).move_to([center_x + elem_half_width_right/2, dim_1_y - 0.2, 0])
         dim_1_group = VGroup(dim_1_line, dim_1_tick_right, dim_1_tick_center, dim_1_label)
         
         # Dramatic highlighting of 1 - grows from the specific "1" position in integral (14% left)
@@ -1408,16 +1423,16 @@ class MESStructureScene(Scene):
         
         # Horizontal dimension -1 (from center to left edge, below element, shortened by 35%)
         dim_neg1_line = Line(
-            [target_position[0], dim_1_y, 0],  # Center
-            [target_position[0] - elem_half_width_left, dim_1_y, 0],  # Left edge (trimmed by 15%)
+            [center_x, dim_1_y, 0],  # Center
+            [center_x - elem_half_width_left, dim_1_y, 0],  # Left edge (trimmed by 15%)
             stroke_width=2, color=BLUE
         )
         dim_neg1_tick_left = Line(
-            [target_position[0] - elem_half_width_left, dim_1_y - 0.1, 0],
-            [target_position[0] - elem_half_width_left, dim_1_y + 0.1, 0],
+            [center_x - elem_half_width_left, dim_1_y - 0.1, 0],
+            [center_x - elem_half_width_left, dim_1_y + 0.1, 0],
             stroke_width=2, color=BLUE
         )
-        dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.3).move_to([target_position[0] - elem_half_width_left/2, dim_1_y - 0.2, 0])
+        dim_neg1_label = MathTex(r"\mathbf{-1}").scale(0.3).move_to([center_x - elem_half_width_left/2, dim_1_y - 0.2, 0])
         dim_neg1_group = VGroup(dim_neg1_line, dim_neg1_tick_left, dim_neg1_label)
         
         # Dramatic highlighting of -1 - grows from the specific "-1" position in integral (in down and right from "1")
