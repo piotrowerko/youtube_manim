@@ -1451,13 +1451,441 @@ class MESStructureScene(Scene):
         # ----- Final hold -----
         self.wait(3)
 
+        # ============================================================
+        # NEW STEP: cleanup + move only the integral + show Bt*D*B*h
+        # ============================================================
+
+        # 1) Fade out all matrix expressions + titles from previous step
+        to_fade = VGroup(
+            full_b_matrix,          # numeric B
+            d_matrix_group,         # D title + symbolic + "=" + numeric
+            bt_matrix_title,        # "Transposed B matrix:"
+            bt_matrix,              # B^T matrix itself
+            integral_title          # "Element stiffness matrix:"
+        )
+        self.play(FadeOut(to_fade))
+
+        # 2) Keep ONLY integral_formula and move it up under the horizontal dimension (-1..1)
+        integral_target_pos = np.array([center_x, dim_1_y - 0.55, 0])  # pod wymiar -1..1
+        self.play(integral_formula.animate.move_to(integral_target_pos).scale(1.05))
+
+        # 3) Show the integrand matrix: B^T * D * B * h
+        integrand_title = MathTex(r"\mathbf{B}^T \mathbf{D}\mathbf{B}\,h \;=\;").scale(0.40)
+        integrand_title.next_to(integral_formula, DOWN, buff=0.25)
+        integrand_title.move_to([0, integrand_title.get_center()[1], 0])  # center X
+
+        BTDBh_tex = r"""
+        \begin{bmatrix}
+        0.025\left(4.633 x - 4.633\right)\left(x-1\right) + 0.013\left(14.250 y - 21.375\right)\left(2y-3\right) &
+        0.025\left(x-1\right)\left(4.983 y - 7.475\right) + 0.013\left(4.633 x - 4.633\right)\left(2y-3\right) &
+        -0.025\left(4.633 x - 4.633\right)\left(x+1\right) - 0.013\left(14.250 y - 21.375\right)\left(2y-3\right) &
+        -0.025\left(x+1\right)\left(4.983 y - 7.475\right) - 0.013\left(4.633 x - 4.633\right)\left(2y-3\right) &
+        0.025\left(4.633 x - 4.633\right)\left(x+1\right) + 0.013\left(14.250 y - 21.375\right)\left(2y+3\right) &
+        0.025\left(x+1\right)\left(4.983 y - 7.475\right) + 0.013\left(4.633 x - 4.633\right)\left(2y+3\right) &
+        -0.025\left(4.633 x - 4.633\right)\left(x-1\right) - 0.013\left(14.250 y - 21.375\right)\left(2y+3\right) &
+        -0.025\left(x-1\right)\left(4.983 y - 7.475\right) - 0.013\left(4.633 x - 4.633\right)\left(2y+3\right)
+        \\
+        0.025\left(x-1\right)\left(4.633 y - 6.950\right) + 0.013\left(4.983 x - 4.983\right)\left(2y-3\right) &
+        0.025\left(14.250 x - 14.250\right)\left(x-1\right) + 0.013\left(4.633 y - 6.950\right)\left(2y-3\right) &
+        -0.025\left(x+1\right)\left(4.633 y - 6.950\right) - 0.013\left(4.983 x - 4.983\right)\left(2y-3\right) &
+        -0.025\left(14.250 x - 14.250\right)\left(x+1\right) - 0.013\left(4.633 y - 6.950\right)\left(2y-3\right) &
+        0.025\left(x+1\right)\left(4.633 y - 6.950\right) + 0.013\left(4.983 x - 4.983\right)\left(2y+3\right) &
+        0.025\left(14.250 x - 14.250\right)\left(x+1\right) + 0.013\left(4.633 y - 6.950\right)\left(2y+3\right) &
+        -0.025\left(x-1\right)\left(4.633 y - 6.950\right) - 0.013\left(4.983 x - 4.983\right)\left(2y+3\right) &
+        -0.025\left(14.250 x - 14.250\right)\left(x-1\right) - 0.013\left(4.633 y - 6.950\right)\left(2y+3\right)
+        \\
+        0.025\left(x-1\right)\left(-4.633 x - 4.633\right) + 0.013\left(2y-3\right)\left(-14.250 y + 21.375\right) &
+        0.013\left(-4.633 x - 4.633\right)\left(2y-3\right) + 0.025\left(x-1\right)\left(-4.983 y + 7.475\right) &
+        -0.025\left(x+1\right)\left(-4.633 x - 4.633\right) - 0.013\left(2y-3\right)\left(-14.250 y + 21.375\right) &
+        -0.013\left(-4.633 x - 4.633\right)\left(2y-3\right) - 0.025\left(x+1\right)\left(-4.983 y + 7.475\right) &
+        0.025\left(x+1\right)\left(-4.633 x - 4.633\right) + 0.013\left(2y+3\right)\left(-14.250 y + 21.375\right) &
+        0.013\left(-4.633 x - 4.633\right)\left(2y+3\right) + 0.025\left(x+1\right)\left(-4.983 y + 7.475\right) &
+        -0.025\left(x-1\right)\left(-4.633 x - 4.633\right) - 0.013\left(2y+3\right)\left(-14.250 y + 21.375\right) &
+        -0.013\left(-4.633 x - 4.633\right)\left(2y+3\right) - 0.025\left(x-1\right)\left(-4.983 y + 7.475\right)
+        \\
+        0.013\left(-4.983 x - 4.983\right)\left(2y-3\right) + 0.025\left(x-1\right)\left(-4.633 y + 6.950\right) &
+        0.025\left(x-1\right)\left(-14.250 x - 14.250\right) + 0.013\left(2y-3\right)\left(-4.633 y + 6.950\right) &
+        -0.013\left(-4.983 x - 4.983\right)\left(2y-3\right) - 0.025\left(x+1\right)\left(-4.633 y + 6.950\right) &
+        -0.025\left(x+1\right)\left(-14.250 x - 14.250\right) - 0.013\left(2y-3\right)\left(-4.633 y + 6.950\right) &
+        0.013\left(-4.983 x - 4.983\right)\left(2y+3\right) + 0.025\left(x+1\right)\left(-4.633 y + 6.950\right) &
+        0.025\left(x+1\right)\left(-14.250 x - 14.250\right) + 0.013\left(2y+3\right)\left(-4.633 y + 6.950\right) &
+        -0.013\left(-4.983 x - 4.983\right)\left(2y+3\right) - 0.025\left(x-1\right)\left(-4.633 y + 6.950\right) &
+        -0.025\left(x-1\right)\left(-14.250 x - 14.250\right) - 0.013\left(2y+3\right)\left(-4.633 y + 6.950\right)
+        \\
+        0.025\left(4.633 x + 4.633\right)\left(x-1\right) + 0.013\left(14.250 y + 21.375\right)\left(2y-3\right) &
+        0.025\left(x-1\right)\left(4.983 y + 7.475\right) + 0.013\left(4.633 x + 4.633\right)\left(2y-3\right) &
+        -0.025\left(4.633 x + 4.633\right)\left(x+1\right) - 0.013\left(14.250 y + 21.375\right)\left(2y-3\right) &
+        -0.025\left(x+1\right)\left(4.983 y + 7.475\right) - 0.013\left(4.633 x + 4.633\right)\left(2y-3\right) &
+        0.025\left(4.633 x + 4.633\right)\left(x+1\right) + 0.013\left(14.250 y + 21.375\right)\left(2y+3\right) &
+        0.025\left(x+1\right)\left(4.983 y + 7.475\right) + 0.013\left(4.633 x + 4.633\right)\left(2y+3\right) &
+        -0.025\left(4.633 x + 4.633\right)\left(x-1\right) - 0.013\left(14.250 y + 21.375\right)\left(2y+3\right) &
+        -0.025\left(x-1\right)\left(4.983 y + 7.475\right) - 0.013\left(4.633 x + 4.633\right)\left(2y+3\right)
+        \\
+        0.025\left(x-1\right)\left(4.633 y + 6.950\right) + 0.013\left(4.983 x + 4.983\right)\left(2y-3\right) &
+        0.025\left(14.250 x + 14.250\right)\left(x-1\right) + 0.013\left(4.633 y + 6.950\right)\left(2y-3\right) &
+        -0.025\left(x+1\right)\left(4.633 y + 6.950\right) - 0.013\left(4.983 x + 4.983\right)\left(2y-3\right) &
+        -0.025\left(14.250 x + 14.250\right)\left(x+1\right) - 0.013\left(4.633 y + 6.950\right)\left(2y-3\right) &
+        0.025\left(x+1\right)\left(4.633 y + 6.950\right) + 0.013\left(4.983 x + 4.983\right)\left(2y+3\right) &
+        0.025\left(14.250 x + 14.250\right)\left(x+1\right) + 0.013\left(4.633 y + 6.950\right)\left(2y+3\right) &
+        -0.025\left(x-1\right)\left(4.633 y + 6.950\right) - 0.013\left(4.983 x + 4.983\right)\left(2y+3\right) &
+        -0.025\left(14.250 x + 14.250\right)\left(x-1\right) - 0.013\left(4.633 y + 6.950\right)\left(2y+3\right)
+        \\
+        0.025\left(x-1\right)\left(-4.633 x + 4.633\right) + 0.013\left(2y-3\right)\left(-14.250 y - 21.375\right) &
+        0.013\left(-4.633 x + 4.633\right)\left(2y-3\right) + 0.025\left(x-1\right)\left(-4.983 y - 7.475\right) &
+        -0.025\left(x+1\right)\left(-4.633 x + 4.633\right) - 0.013\left(2y-3\right)\left(-14.250 y - 21.375\right) &
+        -0.013\left(-4.633 x + 4.633\right)\left(2y-3\right) - 0.025\left(x+1\right)\left(-4.983 y - 7.475\right) &
+        0.025\left(x+1\right)\left(-4.633 x + 4.633\right) + 0.013\left(2y+3\right)\left(-14.250 y - 21.375\right) &
+        0.013\left(-4.633 x + 4.633\right)\left(2y+3\right) + 0.025\left(x+1\right)\left(-4.983 y - 7.475\right) &
+        -0.025\left(x-1\right)\left(-4.633 x + 4.633\right) - 0.013\left(2y+3\right)\left(-14.250 y - 21.375\right) &
+        -0.013\left(-4.633 x + 4.633\right)\left(2y+3\right) - 0.025\left(x-1\right)\left(-4.983 y - 7.475\right)
+        \\
+        0.013\left(-4.983 x + 4.983\right)\left(2y-3\right) + 0.025\left(x-1\right)\left(-4.633 y - 6.950\right) &
+        0.025\left(x-1\right)\left(-14.250 x + 14.250\right) + 0.013\left(2y-3\right)\left(-4.633 y - 6.950\right) &
+        -0.013\left(-4.983 x + 4.983\right)\left(2y-3\right) - 0.025\left(x+1\right)\left(-4.633 y - 6.950\right) &
+        -0.025\left(x+1\right)\left(-14.250 x + 14.250\right) - 0.013\left(2y-3\right)\left(-4.633 y - 6.950\right) &
+        0.013\left(-4.983 x + 4.983\right)\left(2y+3\right) + 0.025\left(x+1\right)\left(-4.633 y - 6.950\right) &
+        0.025\left(x+1\right)\left(-14.250 x + 14.250\right) + 0.013\left(2y+3\right)\left(-4.633 y - 6.950\right) &
+        -0.013\left(-4.983 x + 4.983\right)\left(2y+3\right) - 0.025\left(x-1\right)\left(-4.633 y - 6.950\right) &
+        -0.025\left(x-1\right)\left(-14.250 x + 14.250\right) - 0.013\left(2y+3\right)\left(-4.633 y - 6.950\right)
+        \end{bmatrix}
+        """
+
+        # ------------------------------------------------------------
+        # Integrand: split 8x8 matrix into two 8x4 blocks stacked
+        # ------------------------------------------------------------
+
+        integrand_title = MathTex(r"\mathbf{B}^T \mathbf{D}\mathbf{B}\,h \;=\;").scale(0.42)
+        integrand_title.next_to(integral_formula, DOWN, buff=0.22)
+        integrand_title.move_to([0, integrand_title.get_center()[1], 0])  # center X
+
+
+        def split_bmatrix_into_two(BTDBh_tex: str):
+            """Return (left_tex, right_tex) where each is an 8x4 bmatrix as a LaTeX string."""
+            s = BTDBh_tex.strip()
+
+            begin_tag = r"\begin{bmatrix}"
+            end_tag = r"\end{bmatrix}"
+            i0 = s.find(begin_tag)
+            i1 = s.rfind(end_tag)
+            if i0 == -1 or i1 == -1:
+                raise ValueError("BTDBh_tex must contain \\begin{bmatrix} ... \\end{bmatrix}")
+
+            body = s[i0 + len(begin_tag):i1].strip()
+
+            raw_rows = [r.strip() for r in body.split(r"\\") if r.strip()]
+            rows_cols = []
+            for r in raw_rows:
+                cols = [c.strip() for c in r.split("&")]
+                if len(cols) != 8:
+                    raise ValueError(f"Expected 8 columns per row, got {len(cols)} in row:\n{r}")
+                rows_cols.append(cols)
+
+            left_rows = [row[:4] for row in rows_cols]
+            right_rows = [row[4:] for row in rows_cols]
+
+            def build_bmatrix(rows_4cols):
+                lines = []
+                for row in rows_4cols:
+                    lines.append(" & ".join(row))
+                return r"\begin{bmatrix}" + "\n" + r"\\ ".join(lines) + "\n" + r"\end{bmatrix}"
+
+            return build_bmatrix(left_rows), build_bmatrix(right_rows)
+
+
+        BTDBh_left_tex, BTDBh_right_tex = split_bmatrix_into_two(BTDBh_tex)
+
+        integrand_left = MathTex(BTDBh_left_tex)
+        integrand_right = MathTex(BTDBh_right_tex)
+
+        # Layout parameters
+        left_margin = 0.20
+        right_margin = 0.20
+        block_width = config.frame_width * 0.90  # stabilniej niż kombinacje z marginami
+
+        # First block: full width-ish, glued to left
+        integrand_left.set_width(block_width)
+        integrand_left.next_to(integrand_title, DOWN, buff=0.10)
+
+        frame_left_x = -config.frame_width / 2 + left_margin
+        integrand_left.shift(RIGHT * (frame_left_x - integrand_left.get_left()[0]))
+
+        # Second block: same width, but shifted right (start at ~10% frame)
+        integrand_right.set_width(block_width)
+        integrand_right.next_to(integrand_left, DOWN, buff=0.12)
+
+        start_10_x = -config.frame_width / 2 + 0.10 * config.frame_width + left_margin * 0.2
+        integrand_right.shift(RIGHT * (start_10_x - integrand_right.get_left()[0]))
+
+        # --- HARD CLAMP: keep integrand_right fully inside frame horizontally ---
+        frame_left = -config.frame_width / 2 + left_margin
+        frame_right =  config.frame_width / 2 - right_margin
+
+        # if it goes out on the right, shift left
+        over_right = integrand_right.get_right()[0] - frame_right
+        if over_right > 0:
+            integrand_right.shift(LEFT * over_right)
+
+        # if it goes out on the left (rare), shift right
+        over_left = frame_left - integrand_right.get_left()[0]
+        if over_left > 0:
+            integrand_right.shift(RIGHT * over_left)
+
+        integrand_group = VGroup(integrand_title, integrand_left, integrand_right)
+
+        # Bottom clamp for integrand group
+        bottom_margin_integrand = 0.35
+        bottom_limit_integrand = -config.frame_height / 2 + bottom_margin_integrand
+        if integrand_group.get_bottom()[1] < bottom_limit_integrand:
+            integrand_group.shift(UP * (bottom_limit_integrand - integrand_group.get_bottom()[1]))
+
+        # --- IMPORTANT: z-index so integrand never gets covered later ---
+        integrand_title.set_z_index(30)
+        integrand_left.set_z_index(30)
+        integrand_right.set_z_index(30)
+
+        # Animate integrand
+        self.play(FadeIn(integrand_title))
+        self.play(FadeIn(integrand_left))
+        self.play(FadeIn(integrand_right))
+
+        # ============================================================
+        # STEP: keep only first element of BTDBh (a_11), enlarge it
+        # ============================================================
+
+        # 1) Fade out the two big strips (we replace them by a_11 cleanly)
+        self.play(FadeOut(integrand_left), FadeOut(integrand_right))
+
+        # 2) Create a clean first-entry formula a_11(x,y)
+        a11_tex = (
+            r"a_{11}(x,y)="
+            r"0.025\left(4.633 x - 4.633\right)\left(x-1\right)"
+            r"+0.013\left(14.250 y - 21.375\right)\left(2y-3\right)"
+        )
+        a11 = MathTex(a11_tex).scale(0.55)
+        a11.next_to(integrand_title, DOWN, buff=0.18)
+        a11.move_to([0, a11.get_center()[1], 0])
+
+        # 3) Emphasize / enlarge
+        self.play(FadeIn(a11))
+        self.play(a11.animate.scale(1.35).shift(UP*0.05))
+
+
+        # ============================================================
+        # STEP: double integration of a_11 over [-1,1]x[-1,1]
+        # ============================================================
+
+        # Show the target integral for K_11 (you can include 10^6 later if needed)
+        k11_int_0 = MathTex(
+            r"K_{11}=\int_{-1}^{1}\int_{-1}^{1} a_{11}(x,y)\,dx\,dy"
+        ).scale(0.50)
+        k11_int_0.next_to(a11, DOWN, buff=0.22)
+        k11_int_0.move_to([0, k11_int_0.get_center()[1], 0])
+        self.play(FadeIn(k11_int_0))
+
+        # Optional: separate x and y parts (symbolic "przekształcenie")
+        k11_int_1 = MathTex(
+            r"K_{11}=\int_{-1}^{1}\int_{-1}^{1}"
+            r"\Big("
+            r"0.025(4.633x-4.633)(x-1)"
+            r"+0.013(14.250y-21.375)(2y-3)"
+            r"\Big)\,dx\,dy"
+        ).scale(0.42)
+        k11_int_1.next_to(a11, DOWN, buff=0.22)
+        k11_int_1.move_to([0, k11_int_1.get_center()[1], 0])
+        TRANSFORM_RT = 1.6   # czas przekształcenia (sekundy) - możesz dać 1.8
+        PAUSE_T = 0.6        # pauza między krokami
+
+        self.play(Transform(k11_int_0, k11_int_1), run_time=TRANSFORM_RT)
+        self.wait(PAUSE_T)
+
+        # Show "integrate w.r.t x first" (still as algebraic step)
+        k11_int_2 = MathTex(
+            r"K_{11}=\int_{-1}^{1}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
+            r"+\int_{-1}^{1}\left[\int_{-1}^{1} 0.013(14.250y-21.375)(2y-3)\,dx\right]dy"
+        ).scale(0.36)
+        k11_int_2.next_to(a11, DOWN, buff=0.22)
+        k11_int_2.move_to([0, k11_int_2.get_center()[1], 0])
+
+        self.play(Transform(k11_int_0, k11_int_2), run_time=TRANSFORM_RT)
+        self.wait(PAUSE_T)
+
+        # Use the fact that the second term is independent of x -> inner integral gives factor 2
+        k11_int_3 = MathTex(
+            r"K_{11}=\int_{-1}^{1}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
+            r"+\int_{-1}^{1} \left[ 2\cdot 0.013(14.250y-21.375)(2y-3)\right]dy"
+        ).scale(0.36)
+        k11_int_3.next_to(a11, DOWN, buff=0.22)
+        k11_int_3.move_to([0, k11_int_3.get_center()[1], 0])
+
+        self.play(Transform(k11_int_0, k11_int_3), run_time=TRANSFORM_RT)
+        self.wait(PAUSE_T)
+
+
+        # Final numeric result (from your computed K1 matrix)
+        k11_value = MathTex(r"K_{11}=7\,339\,166.7").scale(0.60)
+        k11_value.next_to(k11_int_0, DOWN, buff=0.22)
+        k11_value.move_to([0, k11_value.get_center()[1], 0])
+
+        self.play(FadeIn(k11_value))
+        self.wait(1)
+
+        # ============================================================
+        # STEP: Build resulting K, starting from K_11  (ROBUST, ALWAYS VISIBLE)
+        # ============================================================
+
+        # Clean up: keep only K_11 value for a moment
+        self.play(FadeOut(integrand_title), FadeOut(a11), FadeOut(k11_int_0))
+
+        # ----------------------------
+        # Controls (tune only here)
+        # ----------------------------
+        # Where to place the matrix block (absolute Y in scene coords)
+        target_y = -config.frame_height * 0.30   # lower part of screen, but not at the very bottom
+
+        # Hard size limits for the whole block (title + matrix)
+        max_w = config.frame_width * 0.96
+        max_h = config.frame_height * 0.34       # increase to 0.38 if you still want bigger
+
+        # Typography / spacing
+        title_scale = 0.62
+
+        entry_scale = 0.60          # size of numeric entries (after shortening)
+        box_scale   = 0.62          # size of boxes
+        num_x_squash = 0.92         # horizontal squeeze for digits (Community Manim friendly)
+
+        h_buff = 1.05               # IMPORTANT: column spacing
+        v_buff = 0.34               # row spacing
+        title_gap = 0.20
+
+        top_margin = 0.40
+        bottom_margin = 0.25
+
+        # ------------------------------------------------------------
+        # Helpers
+        # ------------------------------------------------------------
+        def clamp_to_frame(mobj, top_margin=0.4, bottom_margin=0.25):
+            top_limit = config.frame_height/2 - top_margin
+            bottom_limit = -config.frame_height/2 + bottom_margin
+            if mobj.get_top()[1] > top_limit:
+                mobj.shift(DOWN * (mobj.get_top()[1] - top_limit))
+            if mobj.get_bottom()[1] < bottom_limit:
+                mobj.shift(UP * (bottom_limit - mobj.get_bottom()[1]))
+
+        def fit_uniform(mobj, max_w, max_h):
+            if mobj.width == 0 or mobj.height == 0:
+                return
+            s = min(max_w / mobj.width, max_h / mobj.height, 1.0)
+            mobj.scale(s)
+
+        def fmt_num(s: str) -> str:
+            # reserve minus sign width + add thinspace at end to visually separate columns
+            s = s.strip()
+            if s.startswith("-"):
+                return s + r"\,"
+            return r"\phantom{-}" + s + r"\,"
+
+        # ------------------------------------------------------------
+        # Data: skeleton + VISUAL numeric matrix (scaled by 10^6)
+        # ------------------------------------------------------------
+        boxes_data = [[r"\Box"] * 8 for _ in range(8)]
+
+        K1_data_vis = [
+            ["7.34", "2.16", "-5.95", "0.08", "-3.67", "-2.16", "2.28", "-0.08"],
+            ["2.16", "4.94", "-0.08", "-0.66", "-2.16", "-2.47", "0.08", "-1.81"],
+            ["-5.95","-0.08","7.34", "-2.16", "2.28", "0.08", "-3.67","2.16"],
+            ["0.08", "-0.66","-2.16","4.94", "-0.08","-1.81","2.16", "-2.47"],
+            ["-3.67","-2.16","2.28","-0.08","7.34","2.16","-5.95","0.08"],
+            ["-2.16","-2.47","0.08","-1.81","2.16","4.94","-0.08","-0.66"],
+            ["2.28","0.08","-3.67","2.16","-5.95","-0.08","7.34","-2.16"],
+            ["-0.08","-1.81","2.16","-2.47","0.08","-0.66","-2.16","4.94"],
+        ]
+
+        # ------------------------------------------------------------
+        # Title: K1 = 10^6 ·
+        # ------------------------------------------------------------
+        K_title = MathTex(r"\mathbf{K}_1 = 10^6 \cdot").scale(title_scale)
+
+        # ------------------------------------------------------------
+        # Build numeric matrix FIRST (target geometry)
+        # ------------------------------------------------------------
+        def num_entry_mobj(s: str):
+            m = MathTex(fmt_num(s)).scale(entry_scale)
+            m.scale([num_x_squash, 1, 1])  # <-- works in Community Manim
+            return m
+
+        K_full = Matrix(
+            K1_data_vis,
+            element_to_mobject=num_entry_mobj,
+            h_buff=h_buff,
+            v_buff=v_buff,
+        )
+
+        K_full_pack = VGroup(K_title, K_full).arrange(RIGHT, buff=title_gap)
+
+        # Put it where we want (absolute), then fit and clamp
+        K_full_pack.move_to([0, target_y, 0])
+        fit_uniform(K_full_pack, max_w, max_h)
+        clamp_to_frame(K_full_pack, top_margin, bottom_margin)
+
+        # ------------------------------------------------------------
+        # Build skeleton matrix and match EXACTLY to numeric geometry
+        # ------------------------------------------------------------
+        def box_entry_mobj(s: str):
+            return MathTex(s).scale(box_scale)
+
+        K_skel = Matrix(
+            boxes_data,
+            element_to_mobject=box_entry_mobj,
+            h_buff=h_buff,
+            v_buff=v_buff,
+        )
+
+        # match size to numeric matrix part only, then build pack in the same place
+        K_skel.match_width(K_full)
+        K_skel.match_height(K_full)
+        K_skel.move_to(K_full.get_center())
+
+        K_skel_pack = VGroup(K_title.copy(), K_skel).arrange(RIGHT, buff=title_gap)
+        K_skel_pack.move_to(K_full_pack.get_center())
+
+        # ------------------------------------------------------------
+        # Show skeleton (this MUST appear now)
+        # ------------------------------------------------------------
+        self.play(FadeIn(K_skel_pack), run_time=0.8)
+
+        # ------------------------------------------------------------
+        # Move K11 value into first box (0,0)
+        # Since we show 10^6 factor, display 7.34
+        # ------------------------------------------------------------
+        k11_vis = MathTex(fmt_num("7.34")).scale(entry_scale)
+        k11_vis.scale([num_x_squash, 1, 1])
+        k11_vis.move_to(k11_value.get_center())
+
+        self.play(Transform(k11_value, k11_vis), run_time=0.6)
+
+        k11_cell = K_skel.get_entries()[0]  # (0,0)
+        self.play(k11_value.animate.move_to(k11_cell.get_center()), run_time=0.9)
+        self.wait(0.2)
+
+        # ------------------------------------------------------------
+        # Swap skeleton -> numeric
+        # ------------------------------------------------------------
+        self.play(FadeOut(K_skel_pack), FadeIn(K_full_pack), run_time=1.0)
+
+        # Remove the moved-in standalone number (now redundant)
+        self.play(FadeOut(k11_value), run_time=0.3)
+
+        self.wait(2.0)
+
+
+
 if __name__ == "__main__":
     import sys
     
     scene = MESStructureScene()
 
 
-    scene.render()
+    # scene.render()
 
     # manim -pql mes_3_el.py MESStructureScene --from_animation_number 90
  
