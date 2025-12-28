@@ -1669,22 +1669,25 @@ class MESStructureScene(Scene):
         self.play(FadeIn(a11))
         self.play(a11.animate.scale(1.35).shift(UP*0.05))
 
-
         # ============================================================
-        # STEP: double integration of a_11 over [-1,1]x[-1,1]
+        # STEP: double integration of a_11 over x∈[-1,1], y∈[-1.5,1.5]
         # ============================================================
 
-        # Show the target integral for K_11 (you can include 10^6 later if needed)
+        # Show the target integral for K_11 (correct limits)
         k11_int_0 = MathTex(
-            r"K_{11}=\int_{-1}^{1}\int_{-1}^{1} a_{11}(x,y)\,dx\,dy"
+            r"K_{11}=\int_{-1.5}^{1.5}\int_{-1}^{1} a_{11}(x,y)\,dx\,dy"
         ).scale(0.50)
         k11_int_0.next_to(a11, DOWN, buff=0.22)
         k11_int_0.move_to([0, k11_int_0.get_center()[1], 0])
         self.play(FadeIn(k11_int_0))
 
-        # Optional: separate x and y parts (symbolic "przekształcenie")
+        # Timing (as you had)
+        TRANSFORM_RT = 1.6   # czas przekształcenia (sekundy)
+        PAUSE_T = 0.6        # pauza między krokami
+
+        # Substitute a11(x,y) (correct limits)
         k11_int_1 = MathTex(
-            r"K_{11}=\int_{-1}^{1}\int_{-1}^{1}"
+            r"K_{11}=\int_{-1.5}^{1.5}\int_{-1}^{1}"
             r"\Big("
             r"0.025(4.633x-4.633)(x-1)"
             r"+0.013(14.250y-21.375)(2y-3)"
@@ -1692,16 +1695,14 @@ class MESStructureScene(Scene):
         ).scale(0.42)
         k11_int_1.next_to(a11, DOWN, buff=0.22)
         k11_int_1.move_to([0, k11_int_1.get_center()[1], 0])
-        TRANSFORM_RT = 1.6   # czas przekształcenia (sekundy) - możesz dać 1.8
-        PAUSE_T = 0.6        # pauza między krokami
 
         self.play(Transform(k11_int_0, k11_int_1), run_time=TRANSFORM_RT)
         self.wait(PAUSE_T)
 
-        # Show "integrate w.r.t x first" (still as algebraic step)
+        # Integrate w.r.t. x first (correct limits)
         k11_int_2 = MathTex(
-            r"K_{11}=\int_{-1}^{1}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
-            r"+\int_{-1}^{1}\left[\int_{-1}^{1} 0.013(14.250y-21.375)(2y-3)\,dx\right]dy"
+            r"K_{11}=\int_{-1.5}^{1.5}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
+            r"+\int_{-1.5}^{1.5}\left[\int_{-1}^{1} 0.013(14.250y-21.375)(2y-3)\,dx\right]dy"
         ).scale(0.36)
         k11_int_2.next_to(a11, DOWN, buff=0.22)
         k11_int_2.move_to([0, k11_int_2.get_center()[1], 0])
@@ -1709,10 +1710,10 @@ class MESStructureScene(Scene):
         self.play(Transform(k11_int_0, k11_int_2), run_time=TRANSFORM_RT)
         self.wait(PAUSE_T)
 
-        # Use the fact that the second term is independent of x -> inner integral gives factor 2
+        # Second term independent of x => inner integral gives factor 2 (still correct limits)
         k11_int_3 = MathTex(
-            r"K_{11}=\int_{-1}^{1}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
-            r"+\int_{-1}^{1} \left[ 2\cdot 0.013(14.250y-21.375)(2y-3)\right]dy"
+            r"K_{11}=\int_{-1.5}^{1.5}\left[ \int_{-1}^{1} 0.025(4.633x-4.633)(x-1)\,dx \right]dy"
+            r"+\int_{-1.5}^{1.5} \left[ 2\cdot 0.013(14.250y-21.375)(2y-3)\right]dy"
         ).scale(0.36)
         k11_int_3.next_to(a11, DOWN, buff=0.22)
         k11_int_3.move_to([0, k11_int_3.get_center()[1], 0])
@@ -1720,14 +1721,14 @@ class MESStructureScene(Scene):
         self.play(Transform(k11_int_0, k11_int_3), run_time=TRANSFORM_RT)
         self.wait(PAUSE_T)
 
-
-        # Final numeric result (from your computed K1 matrix)
+        # Final numeric result (your computed K1 matrix)
         k11_value = MathTex(r"K_{11}=7\,339\,166.7").scale(0.60)
         k11_value.next_to(k11_int_0, DOWN, buff=0.22)
         k11_value.move_to([0, k11_value.get_center()[1], 0])
 
         self.play(FadeIn(k11_value))
         self.wait(1)
+
 
         # ============================================================
         # STEP: Build resulting K, starting from K_11  (ROBUST, ALWAYS VISIBLE)
@@ -1876,6 +1877,378 @@ class MESStructureScene(Scene):
         self.play(FadeOut(k11_value), run_time=0.3)
 
         self.wait(2.0)
+
+        # ============================================================
+        # NEXT STEP: clear side sketches, remove integral, re-layout
+        # ============================================================
+
+        # 1) Hide left & right full-structure sketches
+        # (they exist in your scene; just fade them out)
+        self.play(
+            FadeOut(miniatura_all_with_labels),
+            FadeOut(discretized_group),
+            run_time=0.9
+        )
+
+        # 2) Remove the integral formula if it is still on screen
+        # (safe try: if not present, no harm as long as it's defined; in your code it is)
+        self.play(FadeOut(integral_formula), run_time=0.6)
+
+        # 3) Move element 1 + all its boundary/dimension decorations to the LEFT edge
+        # We'll collect everything that visually belongs to the element+limits.
+        # Use what is present in your code: elem1_full_copy, coord_system, syn_dof_systems,
+        # plus the green/blue dimension groups and boundary labels.
+        element_with_limits = VGroup(
+            elem1_full_copy,
+            coord_system,
+            syn_dof_systems,
+            # green y-limits
+            dim_15_group, dim_neg15_group,
+            top_boundary, top_boundary_label,
+            bottom_boundary, bottom_boundary_label,
+            # blue x-limits
+            dim_1_group, dim_neg1_group,
+        )
+
+        self.play(
+            element_with_limits.animate.to_edge(LEFT, buff=0.35),
+            run_time=1.0
+        )
+
+        # 4) Move numeric stiffness matrix K1 up under the top edge and shrink a bit
+        self.play(
+            K_full_pack.animate
+                .scale(0.85)
+                .to_edge(UP, buff=0.25),
+            run_time=1.0
+        )
+
+        # Optional short pause
+        self.wait(1.0)
+
+        # ============================================================
+        # TOPOLOGY MATRIX (Element 1): rows = global Q, cols = elem DOF
+        # ============================================================
+
+        # --- Element 1 mapping: i=6, j=1, k=2, r=5 ---
+        # Columns: [ih, iv, jh, jv, kh, kv, rh, rv]
+        # Ones:
+        # Q11 -> ih, Q12 -> iv
+        # Q1  -> jh, Q2  -> jv
+        # Q3  -> kh, Q4  -> kv
+        # Q9  -> rh, Q10 -> rv
+
+        def red_digit(s: str):
+            return MathTex(s).set_color(RED).scale(0.55)
+
+        # build 12x8 data
+        Z, O = "0", "1"
+        topo_data = [[Z]*8 for _ in range(12)]
+        def set1(q_row, col): topo_data[q_row][col] = O
+
+        # cols: 0 ih,1 iv,2 jh,3 jv,4 kh,5 kv,6 rh,7 rv
+        set1(10, 0)  # Q11 -> ih
+        set1(11, 1)  # Q12 -> iv
+        set1(0,  2)  # Q1  -> jh
+        set1(1,  3)  # Q2  -> jv
+        set1(2,  4)  # Q3  -> kh
+        set1(3,  5)  # Q4  -> kv
+        set1(8,  6)  # Q9  -> rh
+        set1(9,  7)  # Q10 -> rv
+
+        # matrix
+        topo_M = Matrix(
+            topo_data,
+            element_to_mobject=red_digit,
+            h_buff=0.55,
+            v_buff=0.33,
+        )
+
+        # --- column headers ---
+        col_headers = ["ih", "iv", "jh", "jv", "kh", "kv", "rh", "rv"]
+        col_labels = VGroup(*[MathTex(h).scale(0.45) for h in col_headers])
+
+        entries = topo_M.get_entries()
+        for j in range(8):
+            top_entry = entries[j]  # row 0 col j
+            col_labels[j].move_to(top_entry.get_center() + UP * 0.55)
+
+        # --- row labels Q1..Q12 (PLACE THEM WITH A HARD GAP FROM MATRIX BRACKET) ---
+        row_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.55) for k in range(1, 13)])
+
+        # hard geometry gaps (tune here)
+        gap_Q_to_matrix   = 0.40   # bigger -> Q further left (fix overlap)
+        gap_brace_to_Q    = 0.18
+        gap_circle_to_brace = 0.22
+
+        x_mat_left = topo_M.get_left()[0]
+        for i in range(12):
+            y = entries[i*8].get_center()[1]
+            # put label center so that its RIGHT edge sits gap_Q_to_matrix left of matrix left edge
+            row_labels[i].move_to([x_mat_left - gap_Q_to_matrix - row_labels[i].width/2, y, 0])
+
+        # --- braces + node circles (NOW they won't collide) ---
+        pair_braces = VGroup()
+        node_circles = VGroup()
+
+        for p in range(6):
+            r0 = 2*p
+            r1 = 2*p + 1
+
+            pair_vg = VGroup(row_labels[r0], row_labels[r1])
+            brace = Brace(pair_vg, LEFT, buff=gap_brace_to_Q)
+
+            circ = Circle(radius=0.18, color=BLUE, stroke_width=3)
+            num = MathTex(str(p+1)).scale(0.45).set_color(BLUE)
+            circ_grp = VGroup(circ, num)
+            circ_grp.next_to(brace, LEFT, buff=gap_circle_to_brace)
+
+            pair_braces.add(brace)
+            node_circles.add(circ_grp)
+
+        # --- pack + position ---
+        topo_pack = VGroup(topo_M, col_labels, row_labels, pair_braces, node_circles)
+
+        # place it (as before): under K1, pushed to right
+        topo_pack.next_to(K_full_pack, DOWN, buff=0.35)
+        topo_pack.to_edge(RIGHT, buff=0.35)
+
+        # vertical clamp
+        bottom_limit = -config.frame_height/2 + 0.25
+        if topo_pack.get_bottom()[1] < bottom_limit:
+            topo_pack.shift(UP * (bottom_limit - topo_pack.get_bottom()[1]))
+
+        # animate
+        self.play(FadeIn(topo_M), run_time=0.8)
+        self.play(LaggedStartMap(FadeIn, col_labels, lag_ratio=0.08), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, row_labels, lag_ratio=0.05), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, pair_braces, lag_ratio=0.08), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, node_circles, lag_ratio=0.08), run_time=0.6)
+        self.wait(2.0)
+
+        
+        # ============================================================
+        # FIX: BIG K_G^(1) built as manual 12x12 wide-rectangle grid
+        # + shrink K1 & T more
+        # + proper global labels (nodes + Q1..Q12)
+        # + clean "flow" K1 -> KG
+        # ============================================================
+
+        # ------------------------------------------------------------
+        # 1) Mocniej pomniejsz K1 i topologię, żeby KG dominowała
+        # ------------------------------------------------------------
+        self.play(
+            K_full_pack.animate.scale(0.58).to_edge(UP, buff=0.18).shift(RIGHT*0.25),
+            topo_pack.animate.scale(0.62).to_edge(RIGHT, buff=0.18).shift(DOWN*0.05),
+            run_time=0.8
+        )
+
+        # ------------------------------------------------------------
+        # Helpers
+        # ------------------------------------------------------------
+        def clamp_group(g, top=0.18, bottom=0.18, left=0.18, right=0.18):
+            top_lim   =  config.frame_height/2 - top
+            bot_lim   = -config.frame_height/2 + bottom
+            left_lim  = -config.frame_width/2  + left
+            right_lim =  config.frame_width/2  - right
+            if g.get_top()[1] > top_lim:
+                g.shift(DOWN * (g.get_top()[1] - top_lim))
+            if g.get_bottom()[1] < bot_lim:
+                g.shift(UP * (bot_lim - g.get_bottom()[1]))
+            if g.get_left()[0] < left_lim:
+                g.shift(RIGHT * (left_lim - g.get_left()[0]))
+            if g.get_right()[0] > right_lim:
+                g.shift(LEFT * (g.get_right()[0] - right_lim))
+
+        def grid_index(r, c, ncols=12):
+            return r*ncols + c
+
+        # ------------------------------------------------------------
+        # 2) Budujemy KG jako SIATKĘ prostokątów (12x12) — szerokie komórki
+        # ------------------------------------------------------------
+        N = 12
+
+        # Docelowy rozmiar KG (szeroka, wyraźnie większa niż K1 i T)
+        KG_TARGET_W = config.frame_width * 0.62
+        KG_TARGET_H = config.frame_height * 0.34   # trochę wyższa niż było
+
+        cell_w = KG_TARGET_W / N
+        cell_h = KG_TARGET_H / N
+
+        # Cell padding (mini przerwy)
+        gap_x = cell_w * 0.06
+        gap_y = cell_h * 0.10
+
+        # Real cell dims (żeby były odstępy)
+        real_w = cell_w - gap_x
+        real_h = cell_h - gap_y
+
+        # Anchor (lewy-dolny róg siatki) — NA LEWEJ masz dużo miejsca
+        grid_left_x  = -config.frame_width/2 + 1.25
+        grid_top_y   = -0.55  # wysokość bloku KG (reguluj, jak chcesz)
+        grid_origin  = np.array([grid_left_x, grid_top_y, 0])
+
+        kg_cells = VGroup()
+        kg_cell_rects = []  # lista do mapowania
+
+        for r in range(N):
+            for c in range(N):
+                rect = Rectangle(
+                    width=real_w,
+                    height=real_h,
+                    stroke_width=1.4,
+                    stroke_color=WHITE,
+                    fill_opacity=0.0,
+                )
+                # pozycjonowanie: (c rośnie w prawo, r rośnie w dół)
+                x = grid_origin[0] + (c + 0.5) * cell_w
+                y = grid_origin[1] + (0.5) * cell_h - r * cell_h
+                rect.move_to([x, y, 0])
+                kg_cells.add(rect)
+                kg_cell_rects.append(rect)
+
+        # nawiasy wokół siatki
+        bracket_pad = 0.22
+        kg_left_br  = MathTex(r"[").scale(1.0)
+        kg_right_br = MathTex(r"]").scale(1.0)
+
+        # rozciągnięcie nawiasów do wysokości siatki
+        kg_left_br.stretch_to_fit_height(KG_TARGET_H + 0.55)
+        kg_right_br.stretch_to_fit_height(KG_TARGET_H + 0.55)
+
+        kg_left_br.move_to([kg_cells.get_left()[0] - bracket_pad, kg_cells.get_center()[1], 0])
+        kg_right_br.move_to([kg_cells.get_right()[0] + bracket_pad, kg_cells.get_center()[1], 0])
+
+        KG_title = MathTex(r"\mathbf{K}^{(1)}_{G}=").scale(0.62)
+        KG_title.next_to(kg_left_br, LEFT, buff=0.25)
+
+        # ------------------------------------------------------------
+        # 3) Globalne etykiety DOF Q1..Q12 (lewo) + (góra, obrócone)
+        # ------------------------------------------------------------
+        kg_row_labels = VGroup(*[MathTex(fr"Q_{{{i}}}").scale(0.42) for i in range(1, 13)])
+        kg_col_labels = VGroup(*[MathTex(fr"Q_{{{i}}}").scale(0.30).rotate(PI/2) for i in range(1, 13)])
+
+        ROW_GAP = 0.52  # odległość od siatki
+        COL_GAP = 0.20
+
+        for r in range(N):
+            left_cell = kg_cell_rects[grid_index(r, 0)]
+            kg_row_labels[r].move_to([kg_cells.get_left()[0] - ROW_GAP, left_cell.get_center()[1], 0])
+
+        for c in range(N):
+            top_cell = kg_cell_rects[grid_index(0, c)]
+            kg_col_labels[c].move_to([top_cell.get_center()[0], kg_cells.get_top()[1] + COL_GAP, 0])
+
+        # ------------------------------------------------------------
+        # 4) Numeracja węzłów 1..6 jako kółka + klamry po 2 DOF
+        # ------------------------------------------------------------
+        kg_pair_braces = VGroup()
+        kg_node_circles = VGroup()
+
+        for p in range(6):
+            r0 = 2*p
+            r1 = 2*p + 1
+            pair_vg = VGroup(kg_row_labels[r0], kg_row_labels[r1])
+
+            brace = Brace(pair_vg, LEFT, buff=0.10)
+            circ = Circle(radius=0.16, color=BLUE, stroke_width=3)
+            num  = MathTex(str(p+1)).scale(0.40).set_color(BLUE)
+
+            circ_grp = VGroup(circ, num).next_to(brace, LEFT, buff=0.16)
+
+            kg_pair_braces.add(brace)
+            kg_node_circles.add(circ_grp)
+
+        # ------------------------------------------------------------
+        # 5) Grupa KG (całość) + clamp
+        # ------------------------------------------------------------
+        KG_ALL = VGroup(
+            KG_title, kg_left_br, kg_right_br,
+            kg_cells,
+            kg_row_labels, kg_col_labels,
+            kg_pair_braces, kg_node_circles
+        )
+        KG_ALL.set_z_index(5)
+        clamp_group(KG_ALL, left=0.10, right=0.10, top=0.10, bottom=0.12)
+
+        # animacja wejścia
+        self.play(FadeIn(VGroup(KG_title, kg_left_br, kg_right_br)), run_time=0.5)
+        self.play(FadeIn(kg_cells), run_time=0.6)
+        self.play(
+            LaggedStartMap(FadeIn, kg_row_labels, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, kg_col_labels, lag_ratio=0.03),
+            LaggedStartMap(FadeIn, kg_pair_braces, lag_ratio=0.06),
+            LaggedStartMap(FadeIn, kg_node_circles, lag_ratio=0.06),
+            run_time=0.9
+        )
+
+        # ------------------------------------------------------------
+        # 6) Mapowanie lokalne -> globalne (dla elementu 1)
+        # lokalny porządek K1: [ih, iv, jh, jv, kh, kv, rh, rv]
+        # global Q: [Q11, Q12, Q1, Q2, Q3, Q4, Q9, Q10]
+        # ------------------------------------------------------------
+        local_to_globalQ = [11, 12, 1, 2, 3, 4, 9, 10]
+        g = [q-1 for q in local_to_globalQ]  # 0-based
+
+        # ------------------------------------------------------------
+        # 7) Podświetl docelowy blok 8x8 w KG
+        # ------------------------------------------------------------
+        block_rects = VGroup(*[kg_cell_rects[grid_index(r, c)] for r in g for c in g])
+        block_box = SurroundingRectangle(block_rects, color=BLUE_D, buff=0.06).set_stroke(width=3)
+        self.play(Create(block_box), run_time=0.6)
+
+        # ------------------------------------------------------------
+        # 8) FLOW: liczby z K1 -> KG (wstawiamy małe MathTex w prostokąty)
+        # ------------------------------------------------------------
+        K_entries = K_full.get_entries()        # 8x8 liczby
+        topo_entries = topo_M.get_entries()     # 12x8 (0/1)
+
+        def K_entry(i, j):
+            return K_entries[i*8 + j]
+
+        def KG_target_cell(i, j):
+            R = g[i]
+            C = g[j]
+            return kg_cell_rects[grid_index(R, C)]
+
+        def topo_entry(q_row0, local_col):
+            return topo_entries[q_row0*8 + local_col]
+
+        # pokazowy zestaw (żeby nie robić 64 animacji)
+        demo_pairs = [
+            (0,0), (0,2), (2,0),
+            (2,4), (4,2),
+            (4,4), (4,6), (6,4),
+        ]
+
+        for (i, j) in demo_pairs:
+            src = K_entry(i, j)
+            tgt = KG_target_cell(i, j)
+
+            src_box = SurroundingRectangle(src, color=YELLOW, buff=0.06).set_stroke(width=3)
+            tgt_box = SurroundingRectangle(tgt, color=YELLOW, buff=0.02).set_stroke(width=3)
+
+            # podświetl "1" w T odpowiadające wyborowi wiersza/kolumny
+            Trow = topo_entry(g[i], i)
+            Tcol = topo_entry(g[j], j)
+            Trow_box = SurroundingRectangle(Trow, color=YELLOW, buff=0.04).set_stroke(width=2)
+            Tcol_box = SurroundingRectangle(Tcol, color=YELLOW, buff=0.04).set_stroke(width=2)
+
+            moving = src.copy().set_z_index(50)
+
+            self.play(Create(src_box), Create(tgt_box), Create(Trow_box), Create(Tcol_box), run_time=0.25)
+            self.play(moving.animate.move_to(tgt.get_center()), run_time=0.80)
+
+            # "stempel" liczby w KG (mały, żeby wyglądało jak wypełnianie)
+            stamped = src.copy().scale(0.55).set_z_index(30).move_to(tgt.get_center())
+            self.play(FadeIn(stamped, run_time=0.12), FadeOut(moving, run_time=0.05))
+
+            self.play(FadeOut(src_box), FadeOut(tgt_box), FadeOut(Trow_box), FadeOut(Tcol_box), run_time=0.18)
+            self.wait(0.06)
+
+        self.wait(2.0)
+
+
 
 
 
