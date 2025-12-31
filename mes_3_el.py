@@ -2262,11 +2262,11 @@ class MESStructureScene(Scene):
         # choose representative transfers (nice variety)
         demo_pairs = [
             (2, 0),  # K1[2,0] -> (jh, ih) -> (Q1,Q11)
-            (0, 2),  # symmetric
-            (6, 4),  # rh vs kh -> Q9 vs Q3
-            (4, 6),  # symmetric
-            (2, 6),  # jh vs rh -> Q1 vs Q9
-            (6, 2),  # symmetric
+            (0, 4),
+            (6, 3),
+            (3, 6),
+            (2, 6),
+            (6, 1),
         ]
 
         # build K1_data_vis from your existing list (must exist in your code)
