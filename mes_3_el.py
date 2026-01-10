@@ -2349,8 +2349,214 @@ class MESStructureScene(Scene):
         self.play(FadeIn(rest_values), run_time=0.8)
         self.wait(1.5)
 
-        # keep everything on screen
 
+
+
+        # ============================================================
+        # ELEMENT 2 – RESET + PRZYWRÓCENIE MES + SYN_EL_2 (POPRAWIONE)
+        # - MES MUSI ZOSTAĆ (top-right)  ✅
+        # - LUW (x2,y2) w węźle 4       ✅
+        # - syn_el_2 mniejszy           ✅
+        # - DOF-y w narożnikach         ✅ (kotwiczone do węzłów elementu)
+        # ============================================================
+        # Wklej TEN BLOK ZAMIAST poprzedniego “NEW STAGE (ELEMENT 2) ...”
+        # ============================================================
+
+        # ----------------------------
+        # 0) CLEANUP: usuń wszystko poza konstrukcją MES (discretized_group)
+        #    UWAGA: discretized_group MUSI być na scenie (self.add albo wcześniej FadeIn)
+        # ----------------------------
+        # (jeśli masz sytuację, że discretized_group był kiedyś FadeOut -> to go przywróć)
+        if discretized_group not in self.mobjects:
+            self.add(discretized_group)
+
+        keep_family = set(discretized_group.get_family())
+
+        to_fade = []
+        for m in list(self.mobjects):
+            if m in keep_family:
+                continue
+            to_fade.append(m)
+
+        if len(to_fade) > 0:
+            self.play(FadeOut(Group(*to_fade)), run_time=0.6)
+
+        # twarde sprzątnięcie
+        for m in to_fade:
+            if m in self.mobjects:
+                self.remove(m)
+
+        self.wait(0.15)
+
+        # ----------------------------
+        # 1) ZŁAP pozycje węzłów z dof_systems (to są “prawdziwe” narożniki z MES)
+        #    Indeksy node_dof_data: 0..5 => node1..node6
+        #    Element 2: (j=5), (k=2), (i=4)  => global nodes: 5,2,4
+        # ----------------------------
+        node2_pos = dof_systems[1][0].get_start()   # node 2 (2,3) -> Q3,Q4
+        node4_pos = dof_systems[3][0].get_start()   # node 4 (2,5) -> Q7,Q8
+        node5_pos = dof_systems[4][0].get_start()   # node 5 (0,3) -> Q9,Q10
+
+        # ----------------------------
+        # 2) “Wyciągnięcie” el.2: kopia na MES + blink
+        # ----------------------------
+        syn2_poly_birth = Polygon(
+            node5_pos, node2_pos, node4_pos,
+            color=BLUE_D, stroke_width=4, fill_opacity=0.0
+        )
+        self.add(syn2_poly_birth)
+        self.play(syn2_poly_birth.animate.set_stroke(YELLOW, width=6), run_time=0.18)
+        self.play(syn2_poly_birth.animate.set_stroke(BLUE_D, width=4), run_time=0.18)
+
+        # ----------------------------
+        # 3) Budujemy syn_el_2 (mniejsze fonty, DOF w narożnikach, LUW w node4!)
+        # ----------------------------
+        # ---- parametry (tune) ----
+        SYN2_TARGET_SCALE = 1.65   # było za duże -> zmniejszamy
+        SYN2_LEFT_BUFF    = 0.22
+        SYN2_TOP_BUFF     = 0.32
+        SYN2_EXTRA_SHIFT  = LEFT * 0.15 + DOWN * 0.03  # zmniejszone LEFT -> przesuwa w prawo
+
+        label_scale_base    = 0.36
+        internal_scale_base = 0.36
+        global_num_scale    = 0.38
+        q_label_scale       = 0.22
+
+        # centroid + etykieta elementu
+        syn2_centroid = (node5_pos + node2_pos + node4_pos) / 3
+        syn2_label = (
+            MathTex(r"e.\ II")
+            .scale(label_scale_base)
+            .stretch(0.85, 0)
+            .move_to(syn2_centroid + DOWN*0.03 + LEFT*0.02)
+        )
+
+        # lokalne i,j,k wewnątrz (bliżej centroidu, aby nie nachodzić na kółka)
+        syn2_i = MathTex("i").scale(internal_scale_base).move_to(node4_pos + DOWN*0.42 + LEFT*0.28)
+        syn2_j = MathTex("j").scale(internal_scale_base).move_to(node5_pos + RIGHT*0.38 + UP*0.22)
+        syn2_k = MathTex("k").scale(internal_scale_base).move_to(node2_pos + LEFT*0.28 + UP*0.22)
+        syn2_internal = VGroup(syn2_i, syn2_j, syn2_k)
+
+        # kółka globalne (4,5,2) – mniejsze, dobrze odsunięte
+        def make_global_circle(num_str, anchor, shift_vec):
+            circ = Circle(radius=0.14, color=WHITE, stroke_width=2.2, fill_opacity=0.0)
+            num  = MathTex(num_str).scale(global_num_scale)
+            grp  = VGroup(circ, num).move_to(anchor + shift_vec)
+            num.move_to(grp.get_center())
+            return grp
+
+        # Pozycje kółek: BARDZO blisko narożników trójkąta
+        g4 = make_global_circle("4", node4_pos, UP*0.32 + RIGHT*0.28)      # węzeł 4 - prawy górny
+        g5 = make_global_circle("5", node5_pos, LEFT*0.26 + DOWN*0.16)     # węzeł 5 - lewy dolny (bliżej, żeby nie wychodzić)
+        g2 = make_global_circle("2", node2_pos, DOWN*0.32 + RIGHT*0.28)    # węzeł 2 - prawy dolny
+        syn2_global_circles = VGroup(g4, g5, g2)
+
+        # ----------------------------
+        # LUW (x2,y2) – MA BYĆ W WĘŹLE 4 (node4_pos)
+        # ----------------------------
+        coord_origin2 = node4_pos
+        coord_scale2  = 0.34
+        stub2 = coord_scale2 * 0.15
+
+        x2_pos = Line(coord_origin2, coord_origin2 + RIGHT*coord_scale2*0.9, stroke_width=4, color=RED)
+        x2_neg = Line(coord_origin2, coord_origin2 + LEFT*stub2,            stroke_width=4, color=RED)
+        x2_tip = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin2 + RIGHT*coord_scale2).rotate(-PI/2)
+
+        y2_pos = Line(coord_origin2, coord_origin2 + UP*coord_scale2*0.9, stroke_width=4, color=RED)
+        y2_neg = Line(coord_origin2, coord_origin2 + DOWN*stub2,          stroke_width=4, color=RED)
+        y2_tip = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin2 + UP*coord_scale2)
+
+        x2_lbl = MathTex("x_2").scale(0.36).move_to(coord_origin2 + RIGHT*coord_scale2 + RIGHT*0.16 + DOWN*0.12)
+        y2_lbl = MathTex("y_2").scale(0.36).move_to(coord_origin2 + UP*coord_scale2 + UP*0.16 + LEFT*0.12)
+
+        coord_system2 = VGroup(VGroup(x2_pos, x2_neg, x2_tip), x2_lbl, VGroup(y2_pos, y2_neg, y2_tip), y2_lbl)
+
+        # ----------------------------
+        # DOF-y w narożnikach (DOKŁADNIE w węzłach - bez offsetów!)
+        # ----------------------------
+        def make_node_dof(node_pos, qx, qy, scale=0.22, label_x_offset=0.12, label_y_offset=0.12, 
+                          x_down_offset=0.05, y_left_offset=0.06):
+            stub = scale * 0.20
+            xlp = Line(node_pos, node_pos + RIGHT*scale*0.9, stroke_width=2, color=WHITE)
+            xln = Line(node_pos, node_pos + LEFT*stub,       stroke_width=2, color=WHITE)
+            xt  = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + RIGHT*scale).rotate(-PI/2)
+
+            ylp = Line(node_pos, node_pos + UP*scale*0.9, stroke_width=2, color=WHITE)
+            yln = Line(node_pos, node_pos + DOWN*stub,    stroke_width=2, color=WHITE)
+            yt  = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + UP*scale)
+
+            xlab = MathTex(qx).scale(q_label_scale).move_to(node_pos + RIGHT*scale + RIGHT*label_x_offset + DOWN*x_down_offset)
+            ylab = MathTex(qy).scale(q_label_scale).move_to(node_pos + UP*scale + UP*label_y_offset + LEFT*y_left_offset)
+
+            g = VGroup(xlp, xln, xt, ylp, yln, yt, xlab, ylab)
+            return g
+
+        # DOF-y DOKŁADNIE w węzłach (bez żadnych przesunięć dx, dy)
+        # - węzeł 4: Q7,Q8 (prawy górny) - Q7 niżej, Q8 bardziej w lewo
+        # - węzeł 5: Q9,Q10 (lewy dolny)
+        # - węzeł 2: Q3,Q4 (prawy dolny)
+        dof_4 = make_node_dof(node4_pos, "Q_7", "Q_8",     scale=0.22, label_x_offset=0.14, label_y_offset=0.12, 
+                              x_down_offset=0.10, y_left_offset=0.12)
+        dof_5 = make_node_dof(node5_pos, "Q_9", "Q_{10}",  scale=0.22, label_x_offset=0.14, label_y_offset=0.12)
+        dof_2 = make_node_dof(node2_pos, "Q_3", "Q_4",     scale=0.22, label_x_offset=0.14, label_y_offset=0.12)
+
+        syn2_dof_systems = VGroup(dof_4, dof_5, dof_2)
+
+        # ----------------------------
+        # 4) syn_el_2: wszystko razem (start w birth), potem scale+move na lewo-górę
+        # ----------------------------
+        syn_el_2 = VGroup(
+            syn2_poly_birth,
+            syn2_label,
+            syn2_internal,
+            syn2_global_circles,
+            coord_system2,
+            syn2_dof_systems,
+        )
+
+        # pojawienie się detali (MES nadal w prawym górnym!)
+        self.play(
+            FadeIn(syn2_label),
+            FadeIn(syn2_internal),
+            FadeIn(syn2_global_circles),
+            FadeIn(coord_system2),
+            LaggedStartMap(FadeIn, syn2_dof_systems, lag_ratio=0.08),
+            run_time=0.6
+        )
+
+        # najpierw mniejszy scale, potem do lewej-góry
+        self.play(syn_el_2.animate.scale(SYN2_TARGET_SCALE), run_time=0.7)
+
+        self.play(
+            syn_el_2.animate
+                .to_edge(LEFT, buff=SYN2_LEFT_BUFF)
+                .to_edge(UP, buff=SYN2_TOP_BUFF)
+                .shift(SYN2_EXTRA_SHIFT),
+            run_time=0.8
+        )
+
+        # ----------------------------
+        # 5) Polish (minimalny) - dostosowane pozycje
+        # ----------------------------
+        # etykieta elementu
+        syn2_label.shift(LEFT*0.01 + DOWN*0.01)
+        
+        # lokalne labele i,j,k (przybliżone do narożników)
+        syn2_i.shift(RIGHT*0.2 + UP*0.1)      # w prawo i do góry
+        syn2_j.shift(LEFT*0.04+ DOWN*0.08)
+        syn2_k.shift(RIGHT*0.2 + DOWN*0.08)    # w dół i w prawo
+        
+        # label x2 - w prawo (żeby nie nachodzić na Q7)
+        x2_lbl.shift(RIGHT*0.08)
+        
+        # labele DOF - mikro-korekty
+        # dof_4 zawiera: [xlp, xln, xt, ylp, yln, yt, xlab(Q7), ylab(Q8)]
+        dof_4[7].shift(LEFT*0.04)   # Q8 - w lewo
+        
+        # dof_2 zawiera: [xlp, xln, xt, ylp, yln, yt, xlab(Q3), ylab(Q4)]
+        dof_2[7].shift(LEFT*0.03)   # Q4 - minimalnie w lewo
+
+        self.wait(0.6)
 
 
 
@@ -2363,5 +2569,6 @@ if __name__ == "__main__":
 
     # scene.render()
 
+    # in the terminal, run:
     # manim -pql mes_3_el.py MESStructureScene --from_animation_number 90
  
