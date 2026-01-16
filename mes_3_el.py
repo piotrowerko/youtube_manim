@@ -2415,7 +2415,7 @@ class MESStructureScene(Scene):
         SYN2_TARGET_SCALE = 1.65   # było za duże -> zmniejszamy
         SYN2_LEFT_BUFF    = 0.22
         SYN2_TOP_BUFF     = 0.32
-        SYN2_EXTRA_SHIFT  = LEFT * 0.15 + DOWN * 0.03  # zmniejszone LEFT -> przesuwa w prawo
+        SYN2_EXTRA_SHIFT  = RIGHT * 0.05 + DOWN * 0.03  # przesunięte w prawo, żeby zmieścił się x=-2
 
         label_scale_base    = 0.36
         internal_scale_base = 0.36
@@ -2447,7 +2447,7 @@ class MESStructureScene(Scene):
 
         # Pozycje kółek: BARDZO blisko narożników trójkąta
         g4 = make_global_circle("4", node4_pos, UP*0.32 + RIGHT*0.28)      # węzeł 4 - prawy górny
-        g5 = make_global_circle("5", node5_pos, LEFT*0.26 + DOWN*0.16)     # węzeł 5 - lewy dolny (bliżej, żeby nie wychodzić)
+        g5 = make_global_circle("5", node5_pos, LEFT*0.26 + DOWN*0.28)     # węzeł 5 - obniżone, żeby nie nachodzić na x=-2
         g2 = make_global_circle("2", node2_pos, DOWN*0.32 + RIGHT*0.28)    # węzeł 2 - prawy dolny
         syn2_global_circles = VGroup(g4, g5, g2)
 
@@ -2557,6 +2557,173 @@ class MESStructureScene(Scene):
         dof_2[7].shift(LEFT*0.03)   # Q4 - minimalnie w lewo
 
         self.wait(0.6)
+
+        # ============================================================
+        # GRANICE CAŁKOWANIA DLA ELEMENTU 2 (TRÓJKĄT)
+        # ============================================================
+        
+        # Wzór całki dla elementu 2 - pojawia się przy GÓRNEJ krawędzi
+        integral_formula_el2 = MathTex(
+            r"\mathbf{K}_2 = \int_{-2}^{0} \int_{-2}^{x} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)  # powiększona czcionka
+        integral_pos_el2 = UP * 3.0 + LEFT * 1.0
+        integral_formula_el2.move_to(integral_pos_el2)
+        
+        self.play(FadeIn(integral_formula_el2), run_time=0.5)
+        self.wait(0.4)
+        
+        # Geometria syn_el_2 - potrzebujemy pozycji węzłów po wszystkich transformacjach
+        # Węzły są w lokalnym układzie: node4=(0,0), node5=(-2,-2), node2=(0,-2)
+        # Ale syn_el_2 został przeskalowany i przesunięty
+        
+        # Wyciągniemy faktyczne pozycje węzłów z syn_el_2
+        # syn2_poly_birth to pierwszy element VGroup syn_el_2
+        tri_verts = syn2_poly_birth.get_vertices()
+        # tri_verts ma 4 punkty (zamknięty wielokąt), weźmiemy pierwsze 3
+        v_node5 = tri_verts[0]  # node5 (j)
+        v_node2 = tri_verts[1]  # node2 (k)
+        v_node4 = tri_verts[2]  # node4 (i)
+        
+        # a) GRANICA y=x (przeciwprostokątna, górna granica całki wewnętrznej)
+        # Highlight "x" w górnej granicy wewnętrznej całki
+        integral_formula_el2_highlight_x = MathTex(
+            r"\mathbf{K}_2 = \int_{-2}^{0} \int_{-2}^{\mathbf{x}} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)
+        integral_formula_el2_highlight_x.move_to(integral_pos_el2)
+        self.play(Transform(integral_formula_el2, integral_formula_el2_highlight_x), run_time=0.4)
+        
+        # Linia y=x (przeciwprostokątna) - od node5 do node4
+        boundary_yx_line = DashedLine(
+            v_node5, v_node4,
+            stroke_width=4, color=YELLOW, dash_length=0.08
+        )
+        boundary_yx_label = MathTex(r"y = x").scale(0.50).set_color(YELLOW)  # znacznie powiększona
+        # Pozycja labela - przy środku przeciwprostokątnej, lekko na zewnątrz
+        mid_yx = (v_node5 + v_node4) / 2
+        boundary_yx_label.move_to(mid_yx + UP*0.20 + LEFT*0.15)
+        boundary_yx_label.rotate(45 * DEGREES)  # obrót o 45 stopni
+        
+        # Dramatyczny highlight "x" - górna granica wewnętrznej całki (startuje przy znaku całki wewnętrznej)
+        integral_x_pos = integral_pos_el2 + RIGHT * 0.68 + LEFT * 0.05 * config.frame_width + UP * 0.15
+        integral_temp_x = MathTex(r"\mathbf{x}").scale(0.50).set_color(YELLOW)
+        integral_temp_x.move_to(integral_x_pos)  # Start at the "x" position
+        
+        self.play(
+            Create(boundary_yx_line),
+            FadeIn(boundary_yx_label),
+            integral_temp_x.animate.scale(3.0).move_to(integral_pos_el2 + UP * 0.8),
+            run_time=0.6
+        )
+        self.wait(0.5)
+        self.play(integral_temp_x.animate.scale(1/3.0).move_to(integral_x_pos), run_time=0.3)
+        self.play(FadeOut(integral_temp_x), run_time=0.2)
+        
+        # b) GRANICA y=-2 (dolna krawędź, dolna granica całki wewnętrznej)
+        # Highlight "-2" w dolnej granicy wewnętrznej całki
+        integral_formula_el2_highlight_neg2y = MathTex(
+            r"\mathbf{K}_2 = \int_{-2}^{0} \int_{\mathbf{-2}}^{x} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)
+        integral_formula_el2_highlight_neg2y.move_to(integral_pos_el2)
+        self.play(Transform(integral_formula_el2, integral_formula_el2_highlight_neg2y), run_time=0.4)
+        
+        # Linia y=-2 (dolna krawędź) - od node5 do node2
+        boundary_yneg2_line = DashedLine(
+            v_node5, v_node2,
+            stroke_width=4, color=GREEN, dash_length=0.08
+        )
+        boundary_yneg2_label = MathTex(r"y = -2").scale(0.50).set_color(GREEN)  # powiększona
+        # Pozycja labela - przy środku dolnej krawędzi, na zewnątrz
+        mid_yneg2 = (v_node5 + v_node2) / 2
+        boundary_yneg2_label.move_to(mid_yneg2 + DOWN*0.30)
+        
+        # Dramatyczny highlight "-2" - dolna granica wewnętrznej całki (startuje przy znaku całki wewnętrznej)
+        integral_neg2y_pos = integral_pos_el2 + RIGHT * 0.35 + LEFT * 0.04 * config.frame_width + DOWN * 0.15
+        integral_temp_neg2y = MathTex(r"\mathbf{-2}").scale(0.50).set_color(GREEN)
+        integral_temp_neg2y.move_to(integral_neg2y_pos)  # Start at the "-2" position
+        
+        self.play(
+            Create(boundary_yneg2_line),
+            FadeIn(boundary_yneg2_label),
+            integral_temp_neg2y.animate.scale(3.0).move_to(integral_pos_el2 + DOWN * 0.8),
+            run_time=0.6
+        )
+        self.wait(0.5)
+        self.play(integral_temp_neg2y.animate.scale(1/3.0).move_to(integral_neg2y_pos), run_time=0.3)
+        self.play(FadeOut(integral_temp_neg2y), run_time=0.2)
+        
+        # c) GRANICA x=0 (prawa krawędź, górna granica całki zewnętrznej)
+        # Highlight "0" w górnej granicy zewnętrznej całki
+        integral_formula_el2_highlight_0 = MathTex(
+            r"\mathbf{K}_2 = \int_{-2}^{\mathbf{0}} \int_{-2}^{x} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)
+        integral_formula_el2_highlight_0.move_to(integral_pos_el2)
+        self.play(Transform(integral_formula_el2, integral_formula_el2_highlight_0), run_time=0.4)
+        
+        # Linia x=0 (prawa krawędź) - od node4 do node2
+        boundary_x0_line = DashedLine(
+            v_node4, v_node2,
+            stroke_width=4, color=BLUE, dash_length=0.08
+        )
+        boundary_x0_label = MathTex(r"x = 0").scale(0.50).set_color(BLUE)  # powiększona
+        # Pozycja labela - przy środku prawej krawędzi, na zewnątrz
+        mid_x0 = (v_node4 + v_node2) / 2
+        boundary_x0_label.move_to(mid_x0 + RIGHT*0.38)
+        
+        # Dramatyczny highlight "0" - górna granica zewnętrznej całki (startuje przy znaku całki zewnętrznej)
+        integral_0_pos = integral_pos_el2 + LEFT * 0.35 + LEFT * 0.03 * config.frame_width + UP * 0.15
+        integral_temp_0 = MathTex(r"\mathbf{0}").scale(0.50).set_color(BLUE)
+        integral_temp_0.move_to(integral_0_pos)  # Start at the "0" position
+        
+        self.play(
+            Create(boundary_x0_line),
+            FadeIn(boundary_x0_label),
+            integral_temp_0.animate.scale(3.0).move_to(integral_pos_el2 + RIGHT * 0.8),
+            run_time=0.6
+        )
+        self.wait(0.5)
+        self.play(integral_temp_0.animate.scale(1/3.0).move_to(integral_0_pos), run_time=0.3)
+        self.play(FadeOut(integral_temp_0), run_time=0.2)
+        
+        # d) GRANICA x=-2 (lewa krawędź, dolna granica całki zewnętrznej)
+        # Highlight "-2" w dolnej granicy zewnętrznej całki
+        integral_formula_el2_highlight_neg2x = MathTex(
+            r"\mathbf{K}_2 = \int_{\mathbf{-2}}^{0} \int_{-2}^{x} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)
+        integral_formula_el2_highlight_neg2x.move_to(integral_pos_el2)
+        self.play(Transform(integral_formula_el2, integral_formula_el2_highlight_neg2x), run_time=0.4)
+        
+        # Linia x=-2 (lewa pionowa przez node5)
+        # Dla trójkąta lewa granica to punkt node5, ale narysujemy krótką linię pionową
+        boundary_xneg2_line = DashedLine(
+            v_node5 + UP*0.25, v_node5 + DOWN*0.25,
+            stroke_width=4, color=ORANGE, dash_length=0.08
+        )
+        boundary_xneg2_label = MathTex(r"x = -2").scale(0.50).set_color(ORANGE)  # powiększona
+        boundary_xneg2_label.move_to(v_node5 + LEFT*0.55)
+        
+        # Dramatyczny highlight "-2" - dolna granica zewnętrznej całki (startuje przy znaku całki zewnętrznej)
+        integral_neg2x_pos = integral_pos_el2 + LEFT * 0.80 + DOWN * 0.15
+        integral_temp_neg2x = MathTex(r"\mathbf{-2}").scale(0.50).set_color(ORANGE)
+        integral_temp_neg2x.move_to(integral_neg2x_pos)  # Start at the "-2" position
+        
+        self.play(
+            Create(boundary_xneg2_line),
+            FadeIn(boundary_xneg2_label),
+            integral_temp_neg2x.animate.scale(3.0).move_to(integral_pos_el2 + LEFT * 0.8),
+            run_time=0.6
+        )
+        self.wait(0.5)
+        self.play(integral_temp_neg2x.animate.scale(1/3.0).move_to(integral_neg2x_pos), run_time=0.3)
+        self.play(FadeOut(integral_temp_neg2x), run_time=0.2)
+        
+        # Przywróć oryginalny wzór całki
+        integral_formula_el2_original = MathTex(
+            r"\mathbf{K}_2 = \int_{-2}^{0} \int_{-2}^{x} \mathbf{B}^T \mathbf{D} \mathbf{B} \, h \, dy \, dx"
+        ).scale(0.50)
+        integral_formula_el2_original.move_to(integral_pos_el2)
+        self.play(Transform(integral_formula_el2, integral_formula_el2_original), run_time=0.3)
+        
+        self.wait(1.5)
 
 
 
