@@ -2347,7 +2347,16 @@ class MESStructureScene(Scene):
                 rest_values.add(m)
 
         self.play(FadeIn(rest_values), run_time=0.8)
-        self.wait(1.5)
+        self.wait(1.0)
+        
+        # Dodaj wzór KG^(1) na prawo od kg_title
+        kg1_formula = MathTex(
+            r"\mathbf{T}_1^T \mathbf{K}_1 \mathbf{T}_1 \cdot 10^6"
+        ).scale(0.55)
+        kg1_formula.next_to(kg_title, RIGHT, buff=0.15)
+        self.play(FadeIn(kg1_formula), run_time=0.6)
+        
+        self.wait(2.0)
 
 
 
@@ -2724,6 +2733,406 @@ class MESStructureScene(Scene):
         self.play(Transform(integral_formula_el2, integral_formula_el2_original), run_time=0.3)
         
         self.wait(1.5)
+
+
+        # ============================================================
+        # ELEMENT 2 – WSTAWKA: N2, B, D, Bt, Bt*D*B*h (stałe) -> potem znikają
+        # (wklej PO animacji granic całkowania, PRZED blokiem "ELEMENT 2 – CLEAN...")
+        # ============================================================
+
+        # Upewnij się, że syn_el_2 i wzór całki są nad wszystkim
+        syn_el_2.set_z_index(10)
+        integral_formula_el2.set_z_index(10)
+
+        # ----------------------------
+        # Layout bazowy dla macierzy (środek/prawy-dół, żeby nie kolidować z syn_el_2)
+        # ----------------------------
+        mat_anchor = np.array([0.8, -0.2, 0])  # możesz lekko tuningować X/Y
+
+        # ----------------------------
+        # 1) N2 (podstawione)
+        # ----------------------------
+        n2_title = MathTex(r"\text{Shape Function Matrix } \mathbf{N}_2:").scale(0.48)
+        n2_title.move_to(mat_anchor + UP * 2.15)
+
+        n2_mat = MathTex(
+            r"\mathbf{N}_2=\begin{bmatrix}"
+            r"\frac{1}{2}y+1 & 0 & -\frac{1}{2}x & 0 & \frac{1}{2}x-\frac{1}{2}y & 0\\"
+            r"0 & \frac{1}{2}y+1 & 0 & -\frac{1}{2}x & 0 & \frac{1}{2}x-\frac{1}{2}y"
+            r"\end{bmatrix}"
+        ).scale(0.36)
+        n2_mat.next_to(n2_title, DOWN, buff=0.22)
+
+        self.play(FadeIn(n2_title), FadeIn(n2_mat), run_time=0.6)
+        self.wait(0.6)
+
+        # ----------------------------
+        # 2) B (stałe dla trójkąta)
+        # ----------------------------
+        b2_title = MathTex(r"\text{Strain-Displacement Matrix } \mathbf{B}:").scale(0.48)
+        b2_title.move_to(n2_title.get_center())
+
+        b2_mat = MathTex(
+            r"\mathbf{B}=\begin{bmatrix}"
+            r"0 & 0 & -\frac{1}{2} & 0 & \frac{1}{2} & 0\\"
+            r"0 & \frac{1}{2} & 0 & 0 & 0 & -\frac{1}{2}\\"
+            r"\frac{1}{2} & 0 & 0 & -\frac{1}{2} & -\frac{1}{2} & \frac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+        b2_mat.move_to(n2_mat.get_center())
+
+        self.play(Transform(n2_title, b2_title), Transform(n2_mat, b2_mat), run_time=0.7)
+        self.wait(0.6)
+
+        # ----------------------------
+        # 3) D (GPa)
+        # ----------------------------
+        d2_title = MathTex(r"\text{Elasticity Matrix } \mathbf{D}\ \text{(GPa)}:").scale(0.48)
+        d2_title.move_to(n2_title.get_center())
+
+        d2_mat = MathTex(
+            r"\mathbf{D}=\begin{bmatrix}"
+            r"85.5 & 29.9 & 0\\"
+            r"29.9 & 85.5 & 0\\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+        ).scale(0.52)
+        d2_mat.move_to(n2_mat.get_center() + DOWN*0.05)
+
+        self.play(Transform(n2_title, d2_title), Transform(n2_mat, d2_mat), run_time=0.7)
+        self.wait(0.6)
+
+        # ----------------------------
+        # 4) Bt (obok B i D: szybki układ 3-macierzy -> Bt, D, B)
+        # ----------------------------
+        # Zamiast zostawiać samo D, robimy krótki "panel" Bt / D / B
+        panel_y = -0.25  # wysokość panelu
+
+        Bt2 = MathTex(
+            r"\mathbf{B}^T=\begin{bmatrix}"
+            r"0 & 0 & \frac{1}{2}\\"
+            r"0 & \frac{1}{2} & 0\\"
+            r"-\frac{1}{2} & 0 & 0\\"
+            r"0 & 0 & -\frac{1}{2}\\"
+            r"\frac{1}{2} & 0 & -\frac{1}{2}\\"
+            r"0 & -\frac{1}{2} & \frac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.40)
+
+        D2_small = MathTex(
+            r"\mathbf{D}=\begin{bmatrix}"
+            r"85.5 & 29.9 & 0\\"
+            r"29.9 & 85.5 & 0\\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+
+        B2_small = MathTex(
+            r"\mathbf{B}=\begin{bmatrix}"
+            r"0 & 0 & -\frac{1}{2} & 0 & \frac{1}{2} & 0\\"
+            r"0 & \frac{1}{2} & 0 & 0 & 0 & -\frac{1}{2}\\"
+            r"\frac{1}{2} & 0 & 0 & -\frac{1}{2} & -\frac{1}{2} & \frac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.38)
+
+        panel = VGroup(Bt2, D2_small, B2_small).arrange(RIGHT, buff=0.55)
+        panel.move_to([0.9, panel_y, 0])
+
+        panel_title = MathTex(r"\mathbf{B}^T,\ \mathbf{D},\ \mathbf{B}\ \text{(constant for triangle)}").scale(0.42)
+        panel_title.next_to(panel, UP, buff=0.20)
+
+        self.play(
+            FadeOut(n2_title),
+            FadeOut(n2_mat),
+            FadeIn(panel_title),
+            FadeIn(panel),
+            run_time=0.7
+        )
+        self.wait(0.7)
+
+        # ----------------------------
+        # 5) Bt * D * B * h  (×10^6) – stała macierz liczb
+        # ----------------------------
+        prod_title = MathTex(r"\mathbf{B}^T\mathbf{D}\mathbf{B}\,h \;=\; 10^6\cdot").scale(0.48)
+
+        prod_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"1.04 & 0 & 0 & -1.04 & -1.04 & 1.04\\"
+            r"0 & 3.21 & -1.12 & 0 & 1.12 & -3.21\\"
+            r"0 & -1.12 & 3.21 & 0 & -3.21 & 1.12\\"
+            r"-1.04 & 0 & 0 & 1.04 & 1.04 & -1.04\\"
+            r"-1.04 & 1.12 & -3.21 & 1.04 & 4.25 & -2.16\\"
+            r"1.04 & -3.21 & 1.12 & -1.04 & -2.16 & 4.25"
+            r"\end{bmatrix}"
+        ).scale(0.34)
+
+        prod_group = VGroup(prod_title, prod_mat).arrange(RIGHT, buff=0.25)
+        prod_group.move_to([0.85, -0.35, 0])
+
+        note = MathTex(r"\text{(for triangle: matrix is constant)}").scale(0.40)
+        note.next_to(prod_group, DOWN, buff=0.25)
+
+        self.play(FadeOut(panel_title), FadeOut(panel), FadeIn(prod_group), FadeIn(note), run_time=0.8)
+        self.wait(1.2)
+
+        # ----------------------------
+        # 6) Zniknięcie wstawki (zostaw syn_el_2 + integral_formula_el2 + granice)
+        # ----------------------------
+        to_fade_mid = VGroup(prod_group, note)
+        self.play(FadeOut(to_fade_mid), run_time=0.55)
+
+        self.wait(0.2)
+
+        # ============================================================
+        # ELEMENT 2 – CLEAN, jak el.1, ale prościej:
+        # 1) wygaszamy MES (discretized_group), żeby nie było kolizji
+        # 2) pokazujemy K2 (6x6) + T2 (12x6)
+        # 3) pokazujemy KG^(2) jako siatkę 12x12 + szybkie wypełnienie (bez highlightów)
+        # ============================================================
+
+        # ----------------------------
+        # 0) Wygaszenie konstrukcji MES (żeby odzyskać miejsce)
+        # ----------------------------
+        if 'discretized_group' in locals() and discretized_group in self.mobjects:
+            self.play(FadeOut(discretized_group), run_time=0.5)
+            self.remove(discretized_group)
+
+        # Ustaw warstwy (żeby nic się nie nakładało "przez przypadek")
+        syn_el_2.set_z_index(5)
+
+        # ----------------------------
+        # Helpers (lokalne)
+        # ----------------------------
+        def clamp_to_frame(mobj, top=0.25, bottom=0.20, left=0.20, right=0.20):
+            top_lim =  config.frame_height/2 - top
+            bot_lim = -config.frame_height/2 + bottom
+            left_lim  = -config.frame_width/2 + left
+            right_lim =  config.frame_width/2 - right
+            if mobj.get_top()[1] > top_lim:
+                mobj.shift(DOWN * (mobj.get_top()[1] - top_lim))
+            if mobj.get_bottom()[1] < bot_lim:
+                mobj.shift(UP * (bot_lim - mobj.get_bottom()[1]))
+            if mobj.get_left()[0] < left_lim:
+                mobj.shift(RIGHT * (left_lim - mobj.get_left()[0]))
+            if mobj.get_right()[0] > right_lim:
+                mobj.shift(LEFT * (mobj.get_right()[0] - right_lim))
+
+        def fit_uniform(mobj, max_w, max_h):
+            if mobj.width == 0 or mobj.height == 0:
+                return
+            s = min(max_w / mobj.width, max_h / mobj.height, 1.0)
+            mobj.scale(s)
+
+        def fmt_num(s: str) -> str:
+            s = str(s).strip()
+            if s.startswith("-"):
+                return s + r"\,"
+            return r"\phantom{-}" + s + r"\,"
+
+        def num_entry_mobj(s: str, scale=0.50, x_squash=0.92):
+            m = MathTex(fmt_num(s)).scale(scale)
+            m.scale([x_squash, 1, 1])
+            return m
+
+        # # ----------------------------
+        # # 1) Ustaw syn_el_2 w lewym górnym (jak el.1)
+        # # ----------------------------
+        # self.play(
+        #     syn_el_2.animate.to_edge(LEFT, buff=0.35).to_edge(UP, buff=0.25),
+        #     run_time=0.6
+        # )
+
+        # ----------------------------
+        # 2) K2 (6x6) – po całkowaniu (×10^6)
+        # ----------------------------
+        K2_data_vis = [
+            ["2.09","0","0","-2.09","-2.09","2.09"],
+            ["0","6.41","-2.24","0","2.24","-6.41"],
+            ["0","-2.24","6.41","0","-6.41","2.24"],
+            ["-2.09","0","0","2.09","2.09","-2.09"],
+            ["-2.09","2.24","-6.41","2.09","8.50","-4.33"],
+            ["2.09","-6.41","2.24","-2.09","-4.33","8.50"],
+        ]
+
+        # K2_title = MathTex(r"\mathbf{K}_2 = 10^6 \cdot").scale(0.62)
+        # K2_mat = Matrix(
+        #     K2_data_vis,
+        #     element_to_mobject=lambda s: num_entry_mobj(s, scale=0.50, x_squash=0.92),
+        #     h_buff=1.05,
+        #     v_buff=0.35,
+        # )
+
+        # K2_pack = VGroup(K2_title, K2_mat).arrange(RIGHT, buff=0.20)
+        # K2_pack.set_z_index(10)
+
+        # # pozycja K2: górny pas, środek-lewo
+        # K2_pack.to_edge(UP, buff=0.25).shift(LEFT*0.35)
+        # fit_uniform(K2_pack, max_w=config.frame_width*0.62, max_h=config.frame_height*0.30)
+        # clamp_to_frame(K2_pack)
+
+        # self.play(FadeIn(K2_pack), run_time=0.7)
+        # self.wait(0.3)
+
+        # ----------------------------
+        # 3) T2 (12x6) – tylko pokaz (bez tłumaczeń)
+        # Kolumny: [ih, iv, jh, jv, kh, kv]
+        # i=node4 -> Q7,Q8 ; j=node5 -> Q9,Q10 ; k=node2 -> Q3,Q4
+        # ----------------------------
+        Z, O = "0", "1"
+        T2 = [[Z]*6 for _ in range(12)]
+        def set1(q_row, col): T2[q_row][col] = O
+
+        # Q7,Q8
+        set1(6, 0); set1(7, 1)
+        # Q9,Q10
+        set1(8, 2); set1(9, 3)
+        # Q3,Q4
+        set1(2, 4); set1(3, 5)
+
+        def red_digit(s):
+            return MathTex(s).set_color(RED).scale(0.55)
+
+        T2_eq = MathTex(r"\mathbf{T}_2 =").scale(0.55)
+
+        T2_mat = Matrix(
+            T2,
+            element_to_mobject=red_digit,
+            h_buff=0.55,
+            v_buff=0.33,
+        )
+
+        # kolumny (lokalne dofy)
+        t2_col_headers = ["ih","iv","jh","jv","kh","kv"]
+        t2_col_labels = VGroup(*[MathTex(h).scale(0.45) for h in t2_col_headers])
+
+        t2_entries = T2_mat.get_entries()
+        for j in range(6):
+            top_entry = t2_entries[j]  # row0 col j
+            t2_col_labels[j].move_to(top_entry.get_center() + UP*0.55 + RIGHT*0.35)
+
+        # wiersze Q1..Q12 z dużą przerwą
+        t2_row_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.52) for k in range(1, 13)])
+        x_left = T2_mat.get_left()[0]
+        gap = 0.45
+        for i in range(12):
+            y = t2_entries[i*6].get_center()[1]
+            t2_row_labels[i].move_to([x_left - gap - t2_row_labels[i].width/2, y, 0])
+
+        T2_pack = VGroup(T2_eq, T2_mat).arrange(RIGHT, buff=0.18)
+        T2_full = VGroup(T2_pack, t2_col_labels, t2_row_labels)
+        T2_full.set_z_index(10)
+
+        # pozycja: prawy-górny róg
+        T2_full.to_edge(RIGHT, buff=0.32).to_edge(UP, buff=0.25).shift(DOWN*0.10)
+        fit_uniform(T2_full, max_w=config.frame_width*0.40, max_h=config.frame_height*0.55)
+        clamp_to_frame(T2_full)
+
+        self.play(FadeIn(T2_pack), run_time=0.6)
+        self.play(FadeIn(t2_col_labels), FadeIn(t2_row_labels), run_time=0.6)
+        self.wait(0.5)
+
+        # ----------------------------
+        # 4) KG^(2) – siatka 12x12 na dole + szybkie wypełnienie
+        # ----------------------------
+        # mapowanie lokalne -> globalne (0-based dla Q1..Q12):
+        # local order: [ih,iv, jh,jv, kh,kv]
+        loc_to_glob2 = {
+            0: 6,  # Q7
+            1: 7,  # Q8
+            2: 8,  # Q9
+            3: 9,  # Q10
+            4: 2,  # Q3
+            5: 3,  # Q4
+        }
+
+        cell_w = 0.44
+        cell_h = 0.30
+        grid_rows = 12
+        grid_cols = 12
+
+        grid_cells = VGroup()
+        for r in range(grid_rows):
+            for c in range(grid_cols):
+                rect = Rectangle(width=cell_w, height=cell_h, stroke_width=1.6)
+                rect.set_stroke(WHITE, opacity=0.85)
+                rect.set_fill(opacity=0.0)
+                grid_cells.add(rect)
+
+        grid_group = VGroup()
+        idx = 0
+        for r in range(grid_rows):
+            row = VGroup()
+            for c in range(grid_cols):
+                row.add(grid_cells[idx])
+                idx += 1
+            row.arrange(RIGHT, buff=0.0)
+            grid_group.add(row)
+        grid_group.arrange(DOWN, buff=0.0)
+
+        kg2_title = MathTex(r"\mathbf{K}_G^{(2)} =").scale(0.85)
+
+        # etykiety globalne
+        kg2_top_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.45) for k in range(1, 13)])
+        kg2_left_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.55) for k in range(1, 13)])
+
+        for c in range(12):
+            col_center = grid_group[0][c].get_center()
+            kg2_top_labels[c].move_to(col_center + UP*0.40).rotate(PI/2)
+
+        for r in range(12):
+            row_center = grid_group[r][0].get_center()
+            kg2_left_labels[r].move_to(row_center + LEFT*0.75)
+
+        kg2_pack = VGroup(kg2_title, grid_group, kg2_top_labels, kg2_left_labels)
+        kg2_pack.set_z_index(20)
+
+        # pozycja KG2: dół, duże, lekko w lewo (żeby nie dotykało T2)
+        kg2_pack.scale(1.05)
+        kg2_pack.to_edge(DOWN, buff=0.22).shift(LEFT*0.75)
+        kg2_title.next_to(grid_group, UP, buff=0.55)
+
+        # jeśli nadal zbyt blisko T2 -> dosuń w lewo automatycznie
+        if kg2_pack.get_right()[0] > T2_full.get_left()[0] - 0.25:
+            kg2_pack.shift(LEFT * (kg2_pack.get_right()[0] - (T2_full.get_left()[0] - 0.25)))
+
+        clamp_to_frame(kg2_pack)
+
+        self.play(FadeIn(kg2_title), run_time=0.35)
+        self.play(FadeIn(grid_group), run_time=0.65)
+        self.play(LaggedStartMap(FadeIn, kg2_top_labels, lag_ratio=0.02), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, kg2_left_labels, lag_ratio=0.02), run_time=0.6)
+
+        # wzór na prawo od kg2_title
+        kg2_formula = MathTex(r"\mathbf{T}_2^T \mathbf{K}_2 \mathbf{T}_2 \cdot 10^6").scale(0.55)
+        kg2_formula.set_z_index(25)
+        kg2_formula.next_to(kg2_title, RIGHT, buff=0.15)
+
+        self.play(FadeIn(kg2_formula), run_time=0.45)
+
+        # wypełnienie liczb
+        def KG_cell_center(qr_0based, qc_0based):
+            return grid_group[qr_0based][qc_0based].get_center()
+
+        def make_KG_value(text):
+            return MathTex(text).scale(0.33)
+
+        kg2_values = VGroup()
+        for li in range(6):
+            for lj in range(6):
+                gi = loc_to_glob2[li]
+                gj = loc_to_glob2[lj]
+                val = K2_data_vis[li][lj]
+                if str(val).strip() == "0":
+                    continue
+                m = make_KG_value(val)
+                m.move_to(KG_cell_center(gi, gj))
+                m.set_opacity(0.95)
+                kg2_values.add(m)
+
+        self.play(FadeIn(kg2_values), run_time=0.85)
+        self.wait(2.0)
+
+
 
 
 
