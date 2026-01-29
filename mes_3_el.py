@@ -3139,563 +3139,660 @@ class MESStructureScene(Scene):
         # then N3, B3, D3, BtDBh (CONST), K3, topology T3, and KG^(3)
         # ============================================================
 
-        # ------------------------------------------------------------
-        # 0) CLEAN SCREEN: keep ONLY the discretized MES construction
-        # ------------------------------------------------------------
-        # Ensure discretized_group exists on screen (safe)
-        if discretized_group not in self.mobjects:
-            self.play(FadeIn(discretized_group), run_time=0.6)
+        # ----------------------------
+        # 0) CLEANUP: usuń wszystko poza konstrukcją MES (discretized_group)
+        #    (jeśli discretized_group był wcześniej FadeOut/Remove -> przywróć go)
+        # ----------------------------
+        if 'discretized_group' in locals():
+            if discretized_group not in self.mobjects:
+                discretized_group.set_opacity(1)
+                self.add(discretized_group)
+                self.play(FadeIn(discretized_group), run_time=0.5)
+        else:
+            # jeśli z jakiegoś powodu nie ma discretized_group, to nie ma jak kontynuować
+            # (w praktyce u Ciebie istnieje, bo to ten sam plik)
+            pass
 
         keep_family = set(discretized_group.get_family())
-        to_remove = [m for m in list(self.mobjects) if m not in keep_family]
-        if len(to_remove) > 0:
-            self.play(*[FadeOut(m) for m in to_remove], run_time=0.9)
-        self.wait(0.2)
 
-        # ------------------------------------------------------------
-        # 1) BIRTH syn_el_3 from poly_clean vertices (robust geometry)
-        # Element 3 = triangle: node2(2,3) -> node3(4,5) -> node4(2,5)
-        # In poly_clean vertex order:
-        #   2:(2,3), 3:(4,5), 4:(2,5)
-        # ------------------------------------------------------------
-        verts_clean = poly_clean.get_vertices()
-        v2 = verts_clean[2]  # global node 2 (2,3)  -> local origin (0,0)
-        v3 = verts_clean[3]  # global node 3 (4,5)  -> local (2,2)
-        v4 = verts_clean[4]  # global node 4 (2,5)  -> local (0,2)
+        to_fade = []
+        for m in list(self.mobjects):
+            if m in keep_family:
+                continue
+            to_fade.append(m)
 
-        tri3_birth = Polygon(v2, v3, v4, color=GREEN, stroke_width=4, fill_opacity=0.0)
+        if len(to_fade) > 0:
+            self.play(FadeOut(Group(*to_fade)), run_time=0.7)
 
-        # light highlight on MES triangle area (optional)
-        tri3_hl = tri3_birth.copy().set_stroke(GREEN, width=7).set_opacity(0.55)
+        for m in to_fade:
+            if m in self.mobjects:
+                self.remove(m)
 
-        # Node circles (only 2,3,4) near vertices (small outward offset)
-        tri3_centroid = (v2 + v3 + v4) / 3.0
+        self.wait(0.15)
 
-        def node_circle_label(p, text, scale=0.40, r=0.14, out=0.20):
-            d = p - tri3_centroid
-            n = np.linalg.norm(d)
-            u = (d / n) if n > 1e-6 else np.array([1.0, 0.0, 0.0])
-            pos = p + u * out
-            circ = Circle(radius=r, color=BLUE, stroke_width=3).move_to(pos)
-            lab = MathTex(text).scale(scale).set_color(BLUE).move_to(pos)
-            return VGroup(circ, lab)
+        # ----------------------------
+        # 1) ZŁAP pozycje węzłów z dof_systems (to są “prawdziwe” narożniki z MES)
+        #    Element 3: global nodes: 2,3,4  (lokalne: i=2, j=3, k=4)
+        # ----------------------------
+        node2_pos = dof_systems[1][0].get_start()  # global node 2 (2,3) -> Q3,Q4  (origin LUW)
+        node3_pos = dof_systems[2][0].get_start()  # global node 3 (4,5) -> Q5,Q6
+        node4_pos = dof_systems[3][0].get_start()  # global node 4 (2,5) -> Q7,Q8
 
-        n2 = node_circle_label(v2, "2")
-        n3 = node_circle_label(v3, "3")
-        n4 = node_circle_label(v4, "4")
-        tri3_nodes = VGroup(n2, n3, n4)
-
-        # internal local labels i,j,k (as on screenshot: i at node2, j at node3, k at node4)
-        i3_lab = MathTex("i").scale(0.55).set_color(GREEN).move_to(tri3_centroid + 0.45*(v2-tri3_centroid))
-        j3_lab = MathTex("j").scale(0.55).set_color(GREEN).move_to(tri3_centroid + 0.45*(v3-tri3_centroid))
-        k3_lab = MathTex("k").scale(0.55).set_color(GREEN).move_to(tri3_centroid + 0.45*(v4-tri3_centroid))
-        tri3_intlabs = VGroup(i3_lab, j3_lab, k3_lab)
-
-        e3_label = MathTex(r"e.\,III").scale(0.65).set_color(GREEN).move_to(tri3_centroid + LEFT*0.35)
-
-        # Local coordinate system anchored at node2 (origin)
-        # x3 right, y3 up (green)
-        x3_len = 0.65
-        y3_len = 0.65
-        x3_axis = Line(v2, v2 + RIGHT * x3_len, color=GREEN, stroke_width=4)
-        y3_axis = Line(v2, v2 + UP * y3_len,    color=GREEN, stroke_width=4)
-        x3_head = Triangle(color=GREEN, fill_opacity=1.0).scale(0.06).move_to(v2 + RIGHT * x3_len).rotate(-PI/2)
-        y3_head = Triangle(color=GREEN, fill_opacity=1.0).scale(0.06).move_to(v2 + UP * y3_len)
-        x3_lab  = MathTex("x_3").scale(0.45).set_color(GREEN).move_to(v2 + RIGHT*(x3_len+0.25) + DOWN*0.12)
-        y3_lab  = MathTex("y_3").scale(0.45).set_color(GREEN).move_to(v2 + UP*(y3_len+0.25) + LEFT*0.12)
-        coord3  = VGroup(x3_axis, x3_head, x3_lab, y3_axis, y3_head, y3_lab)
-
-        syn_el_3 = VGroup(tri3_birth, tri3_nodes, tri3_intlabs, e3_label, coord3)
-
-        # show birth
-        self.play(Create(tri3_hl), run_time=0.25)
-        self.play(FadeIn(syn_el_3), run_time=0.6)
-        self.play(FadeOut(tri3_hl), run_time=0.25)
-
-        # Move syn_el_3 to center and scale up (keep MES discretization visible on right)
-        syn3_target_pos = UP * 1.9 + LEFT * 1.1
-        syn3_scale = 2.05
-        self.play(
-            syn_el_3.animate.scale(syn3_scale).move_to(syn3_target_pos),
-            run_time=1.0
+        # ----------------------------
+        # 2) “Wyciągnięcie” el.3: kopia na MES + blink
+        # ----------------------------
+        syn3_poly_birth = Polygon(
+            node2_pos, node3_pos, node4_pos,
+            color=BLUE_D, stroke_width=4, fill_opacity=0.0
         )
+        self.add(syn3_poly_birth)
+        self.play(syn3_poly_birth.animate.set_stroke(YELLOW, width=6), run_time=0.18)
+        self.play(syn3_poly_birth.animate.set_stroke(BLUE_D, width=4), run_time=0.18)
+
+        # ----------------------------
+        # 3) Budujemy syn_el_3 (analogicznie do syn_el_2: mniejsze fonty, DOF w narożnikach)
+        # ----------------------------
+        # ---- parametry (tune) ----
+        SYN3_TARGET_SCALE = 1.65
+        SYN3_LEFT_BUFF    = 0.22
+        SYN3_TOP_BUFF     = 0.32
+        SYN3_EXTRA_SHIFT  = RIGHT * 0.05 + DOWN * 0.03
+
+        label_scale_base    = 0.36
+        internal_scale_base = 0.36
+        global_num_scale    = 0.38
+        q_label_scale       = 0.22
+
+        # centroid + etykieta elementu
+        syn3_centroid = (node2_pos + node3_pos + node4_pos) / 3
+        syn3_label = (
+            MathTex(r"e.\ III")
+            .scale(label_scale_base)
+            .stretch(0.85, 0)
+            .move_to(syn3_centroid + DOWN*0.03 + LEFT*0.02)
+        )
+
+        # lokalne i,j,k (wewnątrz, bliżej narożników jak w 2)
+        # lokalne: i=node2 (dolny-lewy), j=node3 (prawy-górny), k=node4 (lewy-górny)
+        syn3_i = MathTex("i").scale(internal_scale_base).move_to(node2_pos + UP*0.42 + RIGHT*0.25)
+        syn3_j = MathTex("j").scale(internal_scale_base).move_to(node3_pos + LEFT*0.35 + DOWN*0.28)
+        syn3_k = MathTex("k").scale(internal_scale_base).move_to(node4_pos + RIGHT*0.32 + DOWN*0.28)
+        syn3_internal = VGroup(syn3_i, syn3_j, syn3_k)
+
+        # kółka globalne (2,3,4) – białe jak w syn_el_2
+        def make_global_circle(num_str, anchor, shift_vec):
+            circ = Circle(radius=0.14, color=WHITE, stroke_width=2.2, fill_opacity=0.0)
+            num  = MathTex(num_str).scale(global_num_scale)
+            grp  = VGroup(circ, num).move_to(anchor + shift_vec)
+            num.move_to(grp.get_center())
+            return grp
+
+        g2 = make_global_circle("2", node2_pos, DOWN*0.32 + LEFT*0.28)     # dolny-lewy
+        g3 = make_global_circle("3", node3_pos, UP*0.32 + RIGHT*0.28)      # prawy-górny
+        g4 = make_global_circle("4", node4_pos, UP*0.32 + LEFT*0.28)       # lewy-górny
+        syn3_global_circles = VGroup(g2, g3, g4)
+
+        # ----------------------------
+        # LUW (x3,y3) – MA BYĆ W WĘŹLE 2 (node2_pos)
+        # czerwone jak w syn_el_2
+        # ----------------------------
+        coord_origin3 = node2_pos
+        coord_scale3  = 0.34
+        stub3 = coord_scale3 * 0.15
+
+        x3_pos = Line(coord_origin3, coord_origin3 + RIGHT*coord_scale3*0.9, stroke_width=4, color=RED)
+        x3_neg = Line(coord_origin3, coord_origin3 + LEFT*stub3,            stroke_width=4, color=RED)
+        x3_tip = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin3 + RIGHT*coord_scale3).rotate(-PI/2)
+
+        y3_pos = Line(coord_origin3, coord_origin3 + UP*coord_scale3*0.9, stroke_width=4, color=RED)
+        y3_neg = Line(coord_origin3, coord_origin3 + DOWN*stub3,          stroke_width=4, color=RED)
+        y3_tip = Triangle(color=RED, fill_opacity=1.0).scale(0.05).move_to(coord_origin3 + UP*coord_scale3)
+
+        x3_lbl = MathTex("x_3").scale(0.36).move_to(coord_origin3 + RIGHT*coord_scale3 + RIGHT*0.16 + DOWN*0.12)
+        y3_lbl = MathTex("y_3").scale(0.36).move_to(coord_origin3 + UP*coord_scale3 + UP*0.16 + LEFT*0.12)
+
+        coord_system3 = VGroup(VGroup(x3_pos, x3_neg, x3_tip), x3_lbl, VGroup(y3_pos, y3_neg, y3_tip), y3_lbl)
+
+        # ----------------------------
+        # DOF-y w narożnikach (DOKŁADNIE w węzłach)
+        # Element 3:
+        #  - node2: Q3,Q4
+        #  - node3: Q5,Q6
+        #  - node4: Q7,Q8
+        # ----------------------------
+        def make_node_dof(node_pos, qx, qy, scale=0.22, label_x_offset=0.14, label_y_offset=0.12,
+                          x_down_offset=0.05, y_left_offset=0.06):
+            stub = scale * 0.20
+            xlp = Line(node_pos, node_pos + RIGHT*scale*0.9, stroke_width=2, color=WHITE)
+            xln = Line(node_pos, node_pos + LEFT*stub,       stroke_width=2, color=WHITE)
+            xt  = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + RIGHT*scale).rotate(-PI/2)
+
+            ylp = Line(node_pos, node_pos + UP*scale*0.9, stroke_width=2, color=WHITE)
+            yln = Line(node_pos, node_pos + DOWN*stub,    stroke_width=2, color=WHITE)
+            yt  = Triangle(color=WHITE, fill_opacity=1.0).scale(0.03).move_to(node_pos + UP*scale)
+
+            xlab = MathTex(qx).scale(q_label_scale).move_to(node_pos + RIGHT*scale + RIGHT*label_x_offset + DOWN*x_down_offset)
+            ylab = MathTex(qy).scale(q_label_scale).move_to(node_pos + UP*scale + UP*label_y_offset + LEFT*y_left_offset)
+
+            return VGroup(xlp, xln, xt, ylp, yln, yt, xlab, ylab)
+
+        dof_2 = make_node_dof(node2_pos, "Q_3", "Q_4", scale=0.22, label_x_offset=0.14, label_y_offset=0.12)
+        dof_3 = make_node_dof(node3_pos, "Q_5", "Q_6", scale=0.22, label_x_offset=0.14, label_y_offset=0.12,
+                              x_down_offset=0.10, y_left_offset=0.12)
+        dof_4 = make_node_dof(node4_pos, "Q_7", "Q_8", scale=0.22, label_x_offset=0.14, label_y_offset=0.12,
+                              x_down_offset=0.10, y_left_offset=0.12)
+
+        syn3_dof_systems = VGroup(dof_2, dof_3, dof_4)
+
+        # ----------------------------
+        # 4) syn_el_3: wszystko razem (start w birth), potem scale+move na lewo-górę
+        # ----------------------------
+        syn_el_3 = VGroup(
+            syn3_poly_birth,
+            syn3_label,
+            syn3_internal,
+            syn3_global_circles,
+            coord_system3,
+            syn3_dof_systems,
+        )
+
+        self.play(
+            FadeIn(syn3_label),
+            FadeIn(syn3_internal),
+            FadeIn(syn3_global_circles),
+            FadeIn(coord_system3),
+            LaggedStartMap(FadeIn, syn3_dof_systems, lag_ratio=0.08),
+            run_time=0.6
+        )
+
+        self.play(syn_el_3.animate.scale(SYN3_TARGET_SCALE), run_time=0.7)
+
+        self.play(
+            syn_el_3.animate
+                .to_edge(LEFT, buff=SYN3_LEFT_BUFF)
+                .to_edge(UP, buff=SYN3_TOP_BUFF)
+                .shift(SYN3_EXTRA_SHIFT),
+            run_time=0.8
+        )
+
+        # micro polish: żeby nic nie nachodziło
+        syn3_label.shift(LEFT*0.01 + DOWN*0.01)
+        x3_lbl.shift(RIGHT*0.08)
+
+        self.wait(0.5)
+
+        # ============================================================
+        # GRANICE CAŁKOWANIA DLA ELEMENTU 3 (TRÓJKĄT) — lokalnie:
+        # węzeł 2 = (0,0), węzeł 4 = (0,2), węzeł 3 = (2,2)
+        # obszar: x ∈ [0,2], y ∈ [x,2]
+        # ============================================================
+
+        integral_pos_el3 = syn_el_3.get_bottom() + DOWN * 0.55
+
+        # UWAGA: żadnych substrings_to_isolate typu "0","2","x" (psuje LaTeX)
+        # Zamiast tego: brace-notation {{...}} → Manim rozbije submobjecty bez psucia składni TeX.
+        integral_formula_el3 = MathTex(
+            r"\mathbf{K}_3=\int_{{0}}^{{2}}\int_{{x}}^{{2}}"
+            r"\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
+        ).scale(0.50).move_to(integral_pos_el3)
+
+        self.play(FadeIn(integral_formula_el3), run_time=0.5)
+        self.wait(0.25)
+
+        # --- PEWNE kotwice: bierzemy znaki całek, nie same "0/2/x" ---
+        ints = integral_formula_el3.get_parts_by_tex(r"\int")
+        outer_int = ints[0]   # zewnętrzna całka (dx)
+        inner_int = ints[1]   # wewnętrzna całka (dy)
+
+        # pozycje limitów liczone geometrycznie (działa zawsze)
+        OUTER_LOW  = outer_int.get_bottom() + DOWN * 0.08
+        OUTER_HIGH = outer_int.get_top()    + UP   * 0.08
+
+        INNER_LOW  = inner_int.get_bottom() + DOWN * 0.08
+        INNER_HIGH = inner_int.get_top()    + UP   * 0.08
+        
+        # DEBUG: wypisz indeksy submobjectów
+        print("\n=== DEBUG: integral_formula_el3 submobjects ===")
+        for i, submob in enumerate(integral_formula_el3):
+            print(f"Index [{i}]: {submob.get_tex_string() if hasattr(submob, 'get_tex_string') else 'N/A'}")
+        print("===============================================\n")
+
+        # Geometria trójkąta po transformacjach
+        tri_verts3 = syn3_poly_birth.get_vertices()
+        v_node2 = tri_verts3[0]  # node2 (i) origin
+        v_node3 = tri_verts3[1]  # node3 (j)
+        v_node4 = tri_verts3[2]  # node4 (k)
+
+        # Helper: weź “pierwsze” / “drugie” wystąpienie "2" (bo są dwa)
+        def tex_part(mob, tex, which=0):
+            parts = mob.get_parts_by_tex(tex)
+            if len(parts) == 0:
+                return None
+            which = min(which, len(parts) - 1)
+            return parts[which]
+
+        # a) GRANICA y=2 (górna granica wewnętrznej całki - ostatnie "2")
+        boundary_y2 = DashedLine(v_node4, v_node3, stroke_width=4, color=YELLOW, dash_length=0.08)
+        boundary_y2_lbl = MathTex(r"y=2").scale(0.50).set_color(YELLOW).next_to(boundary_y2, UP, buff=0.10)
+
+        # Pobierz wszystkie wystąpienia "2" i weź ostatnie
+        all_2s = integral_formula_el3.get_parts_by_tex("2")
+        y2_start = INNER_HIGH
+
+        temp_y2 = MathTex(r"\mathbf{2}").scale(0.50).set_color(YELLOW).move_to(y2_start)
+        self.add(temp_y2)
+
+        self.play(Create(boundary_y2), FadeIn(boundary_y2_lbl), run_time=0.55)
+        self.play(temp_y2.animate.scale(3.0).move_to(integral_pos_el3 + UP * 1.2), run_time=0.55)
+        self.play(temp_y2.animate.scale(1 / 3.0).move_to(y2_start), run_time=0.30)
+        self.play(FadeOut(temp_y2), run_time=0.20)
+        self.wait(0.20)
+
+        # b) GRANICA y=x (dolna granica wewnętrznej)
+        boundary_yx = DashedLine(v_node2, v_node3, stroke_width=4, color=TEAL, dash_length=0.08)
+        boundary_yx_lbl = MathTex(r"y=x").scale(0.50).set_color(TEAL)
+        mid_yx = (v_node2 + v_node3) / 2
+        boundary_yx_lbl.move_to(mid_yx + RIGHT * (0.28 + config.frame_width * 0.005) + UP * 0.12).rotate(45 * DEGREES)
+
+        # Pobierz "x"
+        all_x = integral_formula_el3.get_parts_by_tex("x")
+        x_start = INNER_LOW
+
+        temp_x = MathTex(r"\mathbf{x}").scale(0.50).set_color(TEAL).move_to(x_start)
+        self.add(temp_x)
+
+        self.play(Create(boundary_yx), FadeIn(boundary_yx_lbl), run_time=0.55)
+        self.play(temp_x.animate.scale(3.0).move_to(integral_pos_el3 + DOWN * 0.8), run_time=0.55)
+        self.play(temp_x.animate.scale(1 / 3.0).move_to(x_start), run_time=0.30)
+        self.play(FadeOut(temp_x), run_time=0.20)
+        self.wait(0.20)
+
+        # c) GRANICA x=2 (górna granica zewnętrznej) — to jest DRUGIE "2"
+        boundary_x2 = DashedLine(
+            v_node3 + UP * 0.25, v_node3 + DOWN * 0.25,
+            stroke_width=4, color=BLUE, dash_length=0.08
+        )
+        boundary_x2_lbl = MathTex(r"x=2").scale(0.50).set_color(BLUE).move_to(v_node3 + RIGHT * 0.55 + DOWN * config.frame_height * 0.03)
+
+        # Pobierz wszystkie wystąpienia "2" i weź pierwsze
+        all_2s_x2 = integral_formula_el3.get_parts_by_tex("2")
+        x2_start = OUTER_HIGH
+
+        temp_x2 = MathTex(r"\mathbf{2}").scale(0.50).set_color(BLUE).move_to(x2_start)
+        self.add(temp_x2)
+
+        self.play(Create(boundary_x2), FadeIn(boundary_x2_lbl), run_time=0.55)
+        self.play(temp_x2.animate.scale(3.0).move_to(integral_pos_el3 + RIGHT * 0.8), run_time=0.55)
+        self.play(temp_x2.animate.scale(1 / 3.0).move_to(x2_start), run_time=0.30)
+        self.play(FadeOut(temp_x2), run_time=0.20)
+        self.wait(0.20)
+
+        # d) GRANICA x=0 (dolna granica zewnętrznej)
+        boundary_x0 = DashedLine(v_node2, v_node4, stroke_width=4, color=ORANGE, dash_length=0.08)
+        boundary_x0_lbl = MathTex(r"x=0").scale(0.50).set_color(ORANGE).next_to(boundary_x0, LEFT, buff=0.10).shift(UP * config.frame_height * 0.04)
+
+        # Pobierz "0"
+        all_0s = integral_formula_el3.get_parts_by_tex("0")
+        x0_start = OUTER_LOW
+
+        temp_x0 = MathTex(r"\mathbf{0}").scale(0.50).set_color(ORANGE).move_to(x0_start)
+        self.add(temp_x0)
+
+        self.play(Create(boundary_x0), FadeIn(boundary_x0_lbl), run_time=0.55)
+        self.play(temp_x0.animate.scale(3.0).move_to(integral_pos_el3 + LEFT * 0.8), run_time=0.55)
+        self.play(temp_x0.animate.scale(1 / 3.0).move_to(x0_start), run_time=0.30)
+        self.play(FadeOut(temp_x0), run_time=0.20)
+
+        self.wait(0.5)
+
+        # WYCZYŚĆ: granice + wzór całkowy (żeby nie nachodził na B3/N3)
+        boundaries_el3 = VGroup(
+            boundary_y2, boundary_y2_lbl,
+            boundary_yx, boundary_yx_lbl,
+            boundary_x2, boundary_x2_lbl,
+            boundary_x0, boundary_x0_lbl
+        )
+        self.play(FadeOut(boundaries_el3), FadeOut(integral_formula_el3), run_time=0.65)
         self.wait(0.2)
 
-        # ------------------------------------------------------------
-        # 2) INTEGRATION LIMITS for triangle in LOCAL (x3,y3):
-        # vertices: (0,0) at i (node2), (0,2) at k (node4), (2,2) at j (node3)
-        # region: 0 <= x <= 2,  x <= y <= 2
-        # boundaries: x=0, y=2, y=x
-        # ------------------------------------------------------------
 
-        # recompute updated vertices after transformation (robust)
-        v2s, v3s, v4s = tri3_birth.get_vertices()
-        tri3s_centroid = (v2s + v3s + v4s) / 3.0
+        # ============================================================
+        # ELEMENT 3 – WSTAWKA: N3, B3, D3, Bt, Bt*D*B*h (stałe) -> potem znikają
+        # ============================================================
 
-        # Boundary lines
-        top_y2 = DashedLine(v4s, v3s, color=GREEN, stroke_width=4, dash_length=0.10)     # y=2
-        diag_yx = DashedLine(v2s, v3s, color=GREEN, stroke_width=4, dash_length=0.10)    # y=x
-        left_x0 = DashedLine(v2s, v4s, color=GREEN, stroke_width=4, dash_length=0.10)    # x=0
+        syn_el_3.set_z_index(10)
 
-        lab_y2 = MathTex(r"y=2").scale(0.35).set_color(GREEN).next_to(top_y2, UP, buff=0.10)
-        lab_yx = MathTex(r"y=x").scale(0.35).set_color(GREEN).move_to(0.55*v2s + 0.45*v3s + RIGHT*0.35)
-        lab_x0 = MathTex(r"x=0").scale(0.35).set_color(GREEN).next_to(left_x0, LEFT, buff=0.10)
+        mat_anchor = np.array([0.8, -0.2, 0])  # jak w el.2 (tune)
+        n3_title = MathTex(r"\text{Shape Function Matrix } \mathbf{N}_3:").scale(0.48)
+        n3_title.move_to(mat_anchor + UP * 2.15)
 
-        # Dimension "2" on left edge and on top edge
-        dimL = DoubleArrow(v2s + LEFT*0.55, v4s + LEFT*0.55, buff=0.02, stroke_width=2)
-        dimL_txt = MathTex(r"2").scale(0.40).next_to(dimL, LEFT, buff=0.10)
-
-        dimT = DoubleArrow(v4s + UP*0.55, v3s + UP*0.55, buff=0.02, stroke_width=2)
-        dimT_txt = MathTex(r"2").scale(0.40).next_to(dimT, UP, buff=0.10)
-
-        limits3_graph = VGroup(top_y2, diag_yx, left_x0, lab_y2, lab_yx, lab_x0, dimL, dimL_txt, dimT, dimT_txt)
-
-        self.play(Create(top_y2), Create(diag_yx), Create(left_x0), run_time=0.6)
-        self.play(FadeIn(VGroup(lab_y2, lab_yx, lab_x0)), run_time=0.45)
-        self.play(Create(dimL), FadeIn(dimL_txt), Create(dimT), FadeIn(dimT_txt), run_time=0.65)
-        self.wait(0.3)
-
-        # ------------------------------------------------------------
-        # 3) DOUBLE INTEGRAL formula + numeric limits highlights
-        # ------------------------------------------------------------
-        int3_pos = syn_el_3.get_bottom() + DOWN * 0.95
-        int3_title = MathTex(r"\text{Element stiffness matrix (triangle):}").scale(0.42)
-        int3_title.move_to(int3_pos + UP * 0.45)
-
-        int3 = MathTex(
-            r"\mathbf{K}_3=\int_{0}^{2}\int_{\;x}^{2}\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
-        ).scale(0.45)
-        int3.move_to(int3_pos)
-
-        self.play(FadeIn(int3_title), FadeIn(int3), run_time=0.6)
-
-        # helper for “dramatic number” pop
-        def pop_tex(tex_str, start_pt, pop_to, color=YELLOW, s0=0.35, s_big=3.0):
-            temp = MathTex(tex_str).scale(s0).set_color(color).move_to(start_pt)
-            self.add(temp)
-            self.play(temp.animate.scale(s_big).move_to(pop_to), run_time=0.45)
-            self.wait(0.15)
-            self.play(temp.animate.scale(1/s_big).move_to(start_pt), run_time=0.35)
-            self.play(FadeOut(temp), run_time=0.15)
-
-        # approximate anchor points inside the integral (stable enough visually)
-        int3_center = int3.get_center()
-        pop_up = int3_center + UP*0.75
-        pop_down = int3_center + DOWN*0.75
-
-        # highlight upper y=2
-        int3_h1 = MathTex(
-            r"\mathbf{K}_3=\int_{0}^{2}\int_{\;x}^{\mathbf{2}}\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
-        ).scale(0.45).move_to(int3_pos)
-        self.play(Transform(int3, int3_h1), run_time=0.6)
-        pop_tex(r"\mathbf{2}", int3_center + RIGHT*1.6 + UP*0.05, pop_up, color=GREEN)
-
-        # highlight lower y=x
-        int3_h2 = MathTex(
-            r"\mathbf{K}_3=\int_{0}^{2}\int_{\;\mathbf{x}}^{2}\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
-        ).scale(0.45).move_to(int3_pos)
-        self.play(Transform(int3, int3_h2), run_time=0.6)
-        pop_tex(r"\mathbf{x}", int3_center + RIGHT*0.65 + UP*0.05, pop_down, color=GREEN)
-
-        # highlight upper x=2
-        int3_h3 = MathTex(
-            r"\mathbf{K}_3=\int_{0}^{\mathbf{2}}\int_{\;x}^{2}\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
-        ).scale(0.45).move_to(int3_pos)
-        self.play(Transform(int3, int3_h3), run_time=0.6)
-        pop_tex(r"\mathbf{2}", int3_center + LEFT*0.05 + UP*0.22, pop_up, color=GREEN)
-
-        # highlight lower x=0
-        int3_h4 = MathTex(
-            r"\mathbf{K}_3=\int_{\mathbf{0}}^{2}\int_{\;x}^{2}\mathbf{B}^T\mathbf{D}\mathbf{B}\,h\;dy\;dx"
-        ).scale(0.45).move_to(int3_pos)
-        self.play(Transform(int3, int3_h4), run_time=0.6)
-        pop_tex(r"\mathbf{0}", int3_center + LEFT*0.45 + UP*0.22, pop_down, color=GREEN)
-
-        self.wait(0.3)
-
-        # ------------------------------------------------------------
-        # 4) MATRIX STEPS: N3, B3, D3, BtDBh (CONST), then K3
-        # (use your Sage results)
-        # ------------------------------------------------------------
-        # Clean graphical limits to make room, keep syn_el_3 + integral
-        self.play(FadeOut(limits3_graph), run_time=0.6)
-        self.wait(0.2)
-
-        # Place matrix panel under the integral
-        panel_y = int3.get_bottom()[1] - 0.55
-        panel_x = 0.20  # slight right shift from left
-        panel_anchor = np.array([panel_x, panel_y, 0])
-
-        # N3 (2x6)
-        N3_title = MathTex(r"\text{Shape function matrix: }\;\mathbf{N}_3=").scale(0.42)
-        N3_title.move_to(panel_anchor + LEFT*2.2 + UP*0.25)
-
-        N3 = MathTex(
-            r"\mathbf{N}_3="
-            r"\begin{bmatrix}"
+        n3_mat = MathTex(
+            r"\mathbf{N}_3=\begin{bmatrix}"
             r"-\frac{1}{2}y_3+1 & 0 & \frac{1}{2}x_3 & 0 & -\frac{1}{2}x_3+\frac{1}{2}y_3 & 0\\"
             r"0 & -\frac{1}{2}y_3+1 & 0 & \frac{1}{2}x_3 & 0 & -\frac{1}{2}x_3+\frac{1}{2}y_3"
             r"\end{bmatrix}"
         ).scale(0.40)
-        N3.next_to(int3, DOWN, buff=0.45)
-        N3.move_to([0, N3.get_center()[1], 0])
+        n3_mat.next_to(n3_title, DOWN, buff=0.22)
 
-        self.play(FadeIn(N3), run_time=0.7)
+        self.play(FadeIn(n3_title), FadeIn(n3_mat), run_time=0.6)
+        self.wait(0.6)
 
-        # B3 (3x6) constant
-        B3 = MathTex(
-            r"\mathbf{B}_3="
-            r"\begin{bmatrix}"
+        # B3
+        b3_title = MathTex(r"\text{Strain-Displacement Matrix } \mathbf{B}_3:").scale(0.48)
+        b3_title.move_to(n3_title.get_center())
+
+        b3_mat = MathTex(
+            r"\mathbf{B}_3=\begin{bmatrix}"
             r"0 & 0 & \frac{1}{2} & 0 & -\frac{1}{2} & 0\\"
             r"0 & -\frac{1}{2} & 0 & 0 & 0 & \frac{1}{2}\\"
             r"-\frac{1}{2} & 0 & 0 & \frac{1}{2} & \frac{1}{2} & -\frac{1}{2}"
             r"\end{bmatrix}"
         ).scale(0.46)
-        B3.next_to(N3, DOWN, buff=0.35)
-        B3.move_to([0, B3.get_center()[1], 0])
+        b3_mat.move_to(n3_mat.get_center())
 
-        self.play(FadeIn(B3), run_time=0.7)
+        self.play(Transform(n3_title, b3_title), Transform(n3_mat, b3_mat), run_time=0.7)
+        self.wait(0.6)
 
-        # D3 numeric (same as before, in GPa -> but you already used MPa-ish numbers in animation; keep consistent)
-        D3 = MathTex(
-            r"\mathbf{D}_3="
-            r"\begin{bmatrix}"
+        # D3 (GPa)
+        d3_title = MathTex(r"\text{Elasticity Matrix } \mathbf{D}\ \text{(GPa)}:").scale(0.48)
+        d3_title.move_to(n3_title.get_center())
+
+        d3_mat = MathTex(
+            r"\mathbf{D}=\begin{bmatrix}"
             r"85.5 & 29.9 & 0\\"
             r"29.9 & 85.5 & 0\\"
             r"0 & 0 & 27.8"
             r"\end{bmatrix}"
-        ).scale(0.50)
-        D3.next_to(B3, DOWN, buff=0.35)
-        D3.move_to([0, D3.get_center()[1], 0])
+        ).scale(0.52)
+        d3_mat.move_to(n3_mat.get_center() + DOWN*0.05)
 
-        self.play(FadeIn(D3), run_time=0.7)
+        self.play(Transform(n3_title, d3_title), Transform(n3_mat, d3_mat), run_time=0.7)
+        self.wait(0.6)
 
-        # BtDBh is constant numeric (shown as 10^6 * matrix_small)
-        BtDBh3 = MathTex(
-            r"\mathbf{B}_3^T\mathbf{D}_3\mathbf{B}_3\,h"
-            r"=10^6\cdot"
-            r"\begin{bmatrix}"
-            r"1.0425 & 0 & 0 & -1.0425 & -1.0425 & 1.0425\\"
-            r"0 & 3.20625 & -1.12125 & 0 & 1.12125 & -3.20625\\"
-            r"0 & -1.12125 & 3.20625 & 0 & -3.20625 & 1.12125\\"
-            r"-1.0425 & 0 & 0 & 1.0425 & 1.0425 & -1.0425\\"
-            r"-1.0425 & 1.12125 & -3.20625 & 1.0425 & 4.24875 & -2.16375\\"
-            r"1.0425 & -3.20625 & 1.12125 & -1.0425 & -2.16375 & 4.24875"
+        # panel Bt / D / B (stałe)
+        Bt3 = MathTex(
+            r"\mathbf{B}_3^T=\begin{bmatrix}"
+            r"0 & 0 & -\frac{1}{2}\\"
+            r"0 & -\frac{1}{2} & 0\\"
+            r"\frac{1}{2} & 0 & 0\\"
+            r"0 & 0 & \frac{1}{2}\\"
+            r"-\frac{1}{2} & 0 & \frac{1}{2}\\"
+            r"0 & \frac{1}{2} & -\frac{1}{2}"
             r"\end{bmatrix}"
-        ).scale(0.30)
-        BtDBh3.next_to(D3, DOWN, buff=0.32)
-        BtDBh3.move_to([0, BtDBh3.get_center()[1], 0])
+        ).scale(0.40)
 
-        # clamp if too low
-        bottom_limit = -config.frame_height/2 + 0.25
-        if BtDBh3.get_bottom()[1] < bottom_limit:
-            shift_up = bottom_limit - BtDBh3.get_bottom()[1]
-            N3.shift(UP*shift_up); B3.shift(UP*shift_up); D3.shift(UP*shift_up); BtDBh3.shift(UP*shift_up)
+        D3_small = MathTex(
+            r"\mathbf{D}=\begin{bmatrix}"
+            r"85.5 & 29.9 & 0\\"
+            r"29.9 & 85.5 & 0\\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+        ).scale(0.42)
 
-        self.play(FadeIn(BtDBh3), run_time=0.8)
-        self.wait(0.3)
+        B3_small = MathTex(
+            r"\mathbf{B}_3=\begin{bmatrix}"
+            r"0 & 0 & \frac{1}{2} & 0 & -\frac{1}{2} & 0\\"
+            r"0 & -\frac{1}{2} & 0 & 0 & 0 & \frac{1}{2}\\"
+            r"-\frac{1}{2} & 0 & 0 & \frac{1}{2} & \frac{1}{2} & -\frac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.38)
 
-        # Show integral simplifies: K3 = (area=2) * BtDBh3
-        simp3 = MathTex(
-            r"\text{Since the integrand is constant:}\quad"
-            r"\mathbf{K}_3=\left(\int_0^2\int_x^2 1\,dy\,dx\right)\mathbf{B}_3^T\mathbf{D}_3\mathbf{B}_3h"
-            r"=2\cdot(\mathbf{B}_3^T\mathbf{D}_3\mathbf{B}_3h)"
-        ).scale(0.32)
-        simp3.next_to(BtDBh3, DOWN, buff=0.25)
-        simp3.move_to([0, simp3.get_center()[1], 0])
+        panel = VGroup(Bt3, D3_small, B3_small).arrange(RIGHT, buff=0.55)
+        panel.move_to([0.9, -0.25, 0])
 
-        # clamp
-        if simp3.get_bottom()[1] < bottom_limit:
-            simp3.shift(UP * (bottom_limit - simp3.get_bottom()[1]))
+        panel_title = MathTex(r"\mathbf{B}^T,\ \mathbf{D},\ \mathbf{B}\ \text{(constant for triangle)}").scale(0.42)
+        panel_title.next_to(panel, UP, buff=0.20)
 
-        self.play(FadeIn(simp3), run_time=0.7)
-        self.wait(0.35)
+        self.play(FadeOut(n3_title), FadeOut(n3_mat), FadeIn(panel_title), FadeIn(panel), run_time=0.7)
+        self.wait(0.7)
 
-        # K3 numeric (6x6) as 10^6 * matrix_small
-        self.play(FadeOut(N3), FadeOut(B3), FadeOut(D3), FadeOut(BtDBh3), FadeOut(simp3), run_time=0.7)
+        # Bt*D*B*h (×10^6)
+        prod_title3 = MathTex(r"\mathbf{B}^T\mathbf{D}\mathbf{B}\,h \;=\; 10^6\cdot").scale(0.48)
+        prod_mat3 = MathTex(
+            r"\begin{bmatrix}"
+            r"1.04 & 0 & 0 & -1.04 & -1.04 & 1.04\\"
+            r"0 & 3.21 & -1.12 & 0 & 1.12 & -3.21\\"
+            r"0 & -1.12 & 3.21 & 0 & -3.21 & 1.12\\"
+            r"-1.04 & 0 & 0 & 1.04 & 1.04 & -1.04\\"
+            r"-1.04 & 1.12 & -3.21 & 1.04 & 4.25 & -2.16\\"
+            r"1.04 & -3.21 & 1.12 & -1.04 & -2.16 & 4.25"
+            r"\end{bmatrix}"
+        ).scale(0.34)
 
-        # small helpers (digits alignment)
-        def fmt_num3(s: str) -> str:
-            s = s.strip()
+        prod_group3 = VGroup(prod_title3, prod_mat3).arrange(RIGHT, buff=0.25)
+        prod_group3.move_to([0.85, -0.35, 0])
+
+        note3 = MathTex(r"\text{(for triangle: matrix is constant)}").scale(0.40)
+        note3.next_to(prod_group3, DOWN, buff=0.25)
+
+        self.play(FadeOut(panel_title), FadeOut(panel), FadeIn(prod_group3), FadeIn(note3), run_time=0.8)
+        self.wait(1.2)
+
+        # zniknięcie wstawki (zostaw syn_el_3)
+        self.play(FadeOut(VGroup(prod_group3, note3)), run_time=0.55)
+        self.wait(0.2)
+
+        # ============================================================
+        # ELEMENT 3 – CLEAN:
+        # 1) wygaszamy MES (discretized_group), żeby odzyskać miejsce
+        # 2) pokazujemy K3 (6x6) + T3 (12x6)
+        # 3) pokazujemy KG^(3) jako siatkę 12x12 + szybkie wypełnienie
+        # ============================================================
+
+        if 'discretized_group' in locals() and discretized_group in self.mobjects:
+            self.play(FadeOut(discretized_group), run_time=0.5)
+            self.remove(discretized_group)
+
+        syn_el_3.set_z_index(5)
+
+        # ----------------------------
+        # Helpers (lokalne)
+        # ----------------------------
+        def clamp_to_frame(mobj, top=0.25, bottom=0.20, left=0.20, right=0.20):
+            top_lim =  config.frame_height/2 - top
+            bot_lim = -config.frame_height/2 + bottom
+            left_lim  = -config.frame_width/2 + left
+            right_lim =  config.frame_width/2 - right
+            if mobj.get_top()[1] > top_lim:
+                mobj.shift(DOWN * (mobj.get_top()[1] - top_lim))
+            if mobj.get_bottom()[1] < bot_lim:
+                mobj.shift(UP * (bot_lim - mobj.get_bottom()[1]))
+            if mobj.get_left()[0] < left_lim:
+                mobj.shift(RIGHT * (left_lim - mobj.get_left()[0]))
+            if mobj.get_right()[0] > right_lim:
+                mobj.shift(LEFT * (mobj.get_right()[0] - right_lim))
+
+        def fit_uniform(mobj, max_w, max_h):
+            if mobj.width == 0 or mobj.height == 0:
+                return
+            s = min(max_w / mobj.width, max_h / mobj.height, 1.0)
+            mobj.scale(s)
+
+        def fmt_num(s: str) -> str:
+            s = str(s).strip()
             if s.startswith("-"):
                 return s + r"\,"
             return r"\phantom{-}" + s + r"\,"
 
+        def num_entry_mobj(s: str, scale=0.50, x_squash=0.92):
+            m = MathTex(fmt_num(s)).scale(scale)
+            m.scale([x_squash, 1, 1])
+            return m
+
+        # ----------------------------
+        # 1) K3 (6x6) — 2 miejsca po przecinku (jak chciałeś)
+        # ----------------------------
         K3_data_vis = [
-            ["2.085",  "0",      "0",     "-2.085", "-2.085", "2.085"],
-            ["0",      "6.4125", "-2.2425","0",      "2.2425","-6.4125"],
-            ["0",      "-2.2425","6.4125","0",      "-6.4125","2.2425"],
-            ["-2.085", "0",      "0",      "2.085",  "2.085", "-2.085"],
-            ["-2.085", "2.2425", "-6.4125","2.085",  "8.4975","-4.3275"],
-            ["2.085",  "-6.4125","2.2425","-2.085", "-4.3275","8.4975"],
+            ["2.09","0","0","-2.09","-2.09","2.09"],
+            ["0","6.41","-2.24","0","2.24","-6.41"],
+            ["0","-2.24","6.41","0","-6.41","2.24"],
+            ["-2.09","0","0","2.09","2.09","-2.09"],
+            ["-2.09","2.24","-6.41","2.09","8.50","-4.33"],
+            ["2.09","-6.41","2.24","-2.09","-4.33","8.50"],
         ]
 
-        def num_entry3(s: str):
-            return MathTex(fmt_num3(s)).scale(0.52).scale([0.92, 1, 1])
-
-        K3_title = MathTex(r"\mathbf{K}_3 = 10^6 \cdot").scale(0.72)
-
-        K3_full = Matrix(
+        K3_title = MathTex(r"\mathbf{K}_3 = 10^6 \cdot").scale(0.62)
+        K3_mat = Matrix(
             K3_data_vis,
-            element_to_mobject=num_entry3,
-            h_buff=0.85,
-            v_buff=0.38,
+            element_to_mobject=lambda s: num_entry_mobj(s, scale=0.50, x_squash=0.92),
+            h_buff=1.05,
+            v_buff=0.35,
         )
+        K3_pack = VGroup(K3_title, K3_mat).arrange(RIGHT, buff=0.20)
+        K3_pack.set_z_index(10)
 
-        K3_pack = VGroup(K3_title, K3_full).arrange(RIGHT, buff=0.22)
+        K3_pack.to_edge(UP, buff=0.25).shift(LEFT*0.35)
+        fit_uniform(K3_pack, max_w=config.frame_width*0.48, max_h=config.frame_height*0.28)
+        clamp_to_frame(K3_pack)
 
-        # place K3 under syn_el_3, keep it readable
-        K3_pack.next_to(syn_el_3, DOWN, buff=0.55)
-        K3_pack.move_to([0, K3_pack.get_center()[1], 0])
+        self.play(FadeIn(K3_pack), run_time=0.7)
+        self.wait(0.3)
 
-        # clamp
-        if K3_pack.get_bottom()[1] < (-config.frame_height/2 + 0.25):
-            K3_pack.shift(UP * ((-config.frame_height/2 + 0.25) - K3_pack.get_bottom()[1]))
-        if K3_pack.get_top()[1] > (config.frame_height/2 - 0.25):
-            K3_pack.shift(DOWN * (K3_pack.get_top()[1] - (config.frame_height/2 - 0.25)))
-
-        self.play(FadeIn(K3_pack), run_time=0.9)
-        self.wait(0.4)
-
-        # ------------------------------------------------------------
-        # 5) TOPOLOGY MATRIX T3 (12x6) + labels like earlier
-        # local DOF order: [ih,iv, jh,jv, kh,kv]
-        # mapping: i=node2 -> Q3,Q4 ; j=node3 -> Q5,Q6 ; k=node4 -> Q7,Q8
-        # ------------------------------------------------------------
-        # shrink & move syn + K3 to make room on right
-        self.play(
-            syn_el_3.animate.scale(0.85).to_edge(LEFT, buff=0.35).shift(UP*0.05),
-            K3_pack.animate.scale(0.85).to_edge(UP, buff=0.25).shift(LEFT*0.15),
-            run_time=0.9
-        )
-
-        # build T3 data (12 rows x 6 cols)
+        # ----------------------------
+        # 2) T3 (12x6)
+        # Kolumny: [ih, iv, jh, jv, kh, kv]
+        # i=node2 -> Q3,Q4 ; j=node3 -> Q5,Q6 ; k=node4 -> Q7,Q8
+        # ----------------------------
         Z, O = "0", "1"
-        topo3_data = [[Z]*6 for _ in range(12)]
-        def set1_3(q_row_0based, col_0based):
-            topo3_data[q_row_0based][col_0based] = O
+        T3 = [[Z]*6 for _ in range(12)]
+        def set1(q_row, col): T3[q_row][col] = O
 
-        # Q3 row index=2, Q4=3, Q5=4, Q6=5, Q7=6, Q8=7
-        set1_3(2, 0)  # Q3  -> ih
-        set1_3(3, 1)  # Q4  -> iv
-        set1_3(4, 2)  # Q5  -> jh
-        set1_3(5, 3)  # Q6  -> jv
-        set1_3(6, 4)  # Q7  -> kh
-        set1_3(7, 5)  # Q8  -> kv
+        # Q3,Q4
+        set1(2, 0); set1(3, 1)
+        # Q5,Q6
+        set1(4, 2); set1(5, 3)
+        # Q7,Q8
+        set1(6, 4); set1(7, 5)
 
-        def red_digit3(s: str):
+        def red_digit(s):
             return MathTex(s).set_color(RED).scale(0.55)
 
-        topo3_M = Matrix(
-            topo3_data,
-            element_to_mobject=red_digit3,
-            h_buff=0.62,
+        T3_eq = MathTex(r"\mathbf{T}_3 =").scale(0.55)
+        T3_mat = Matrix(
+            T3,
+            element_to_mobject=red_digit,
+            h_buff=0.55,
             v_buff=0.33,
         )
 
-        # column headers
-        col3_headers = ["ih", "iv", "jh", "jv", "kh", "kv"]
-        col3_labels = VGroup(*[MathTex(h).scale(0.45) for h in col3_headers])
+        t3_col_headers = ["ih","iv","jh","jv","kh","kv"]
+        t3_col_labels = VGroup(*[MathTex(h).scale(0.45) for h in t3_col_headers])
 
-        topo3_entries = topo3_M.get_entries()
+        t3_entries = T3_mat.get_entries()
         for j in range(6):
-            col3_labels[j].move_to(topo3_entries[j].get_center() + UP * 0.55)
+            top_entry = t3_entries[j]
+            t3_col_labels[j].move_to(top_entry.get_center() + UP*0.55 + RIGHT*0.35)
 
-        # row labels Q1..Q12 (left)
-        row3_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.55) for k in range(1, 13)])
-
-        gap_Q_to_matrix = 0.42
-        x_mat_left = topo3_M.get_left()[0]
+        t3_row_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.52) for k in range(1, 13)])
+        x_left = T3_mat.get_left()[0]
+        gap = 0.45
         for i in range(12):
-            y = topo3_entries[i*6].get_center()[1]
-            row3_labels[i].move_to([x_mat_left - gap_Q_to_matrix - row3_labels[i].width/2, y, 0])
+            y = t3_entries[i*6].get_center()[1]
+            t3_row_labels[i].move_to([x_left - gap - t3_row_labels[i].width/2, y, 0])
 
-        # braces + node circles 1..6 grouping (Q1..Q12 in pairs)
-        pair3_braces = VGroup()
-        node3_circles = VGroup()
-        for p in range(6):
-            r0 = 2*p
-            r1 = 2*p + 1
-            pair_vg = VGroup(row3_labels[r0], row3_labels[r1])
-            brace = Brace(pair_vg, LEFT, buff=0.18)
+        T3_pack = VGroup(T3_eq, T3_mat).arrange(RIGHT, buff=0.18)
+        T3_full = VGroup(T3_pack, t3_col_labels, t3_row_labels)
+        T3_full.set_z_index(10)
 
-            circ = Circle(radius=0.18, color=BLUE, stroke_width=3)
-            num = MathTex(str(p+1)).scale(0.45).set_color(BLUE)
-            circ_grp = VGroup(circ, num)
-            circ_grp.next_to(brace, LEFT, buff=0.22)
+        T3_full.to_edge(RIGHT, buff=0.32).to_edge(UP, buff=0.25).shift(DOWN*(0.10 + config.frame_height*0.15))
+        fit_uniform(T3_full, max_w=config.frame_width*0.35, max_h=config.frame_height*0.48)
+        clamp_to_frame(T3_full)
 
-            pair3_braces.add(brace)
-            node3_circles.add(circ_grp)
+        self.play(FadeIn(T3_pack), run_time=0.6)
+        self.play(FadeIn(t3_col_labels), FadeIn(t3_row_labels), run_time=0.6)
+        self.wait(0.5)
 
-        topo3_pack = VGroup(topo3_M, col3_labels, row3_labels, pair3_braces, node3_circles)
-        topo3_pack.next_to(K3_pack, DOWN, buff=0.35)
-        topo3_pack.to_edge(RIGHT, buff=0.35)
-
-        # clamp bottom
-        bottom_limit = -config.frame_height/2 + 0.25
-        if topo3_pack.get_bottom()[1] < bottom_limit:
-            topo3_pack.shift(UP * (bottom_limit - topo3_pack.get_bottom()[1]))
-
-        self.play(FadeIn(topo3_M), run_time=0.8)
-        self.play(LaggedStartMap(FadeIn, col3_labels, lag_ratio=0.06), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, row3_labels, lag_ratio=0.04), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, pair3_braces, lag_ratio=0.06), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, node3_circles, lag_ratio=0.06), run_time=0.6)
-        self.wait(0.4)
-
-        # ------------------------------------------------------------
-        # 6) BUILD KG^(3) (12x12) and assemble: KG^(3) = T3^T K3 T3 * 10^6
-        # (place 6x6 K3 into global rows/cols Q3..Q8)
-        # ------------------------------------------------------------
-        # make K3 + T3 a bit smaller so KG dominates
-        self.play(
-            K3_pack.animate.scale(0.78).to_edge(UP, buff=0.22).shift(LEFT * 0.15),
-            topo3_pack.animate.scale(0.85).to_edge(RIGHT, buff=0.25).shift(DOWN * 0.05),
-            run_time=0.9
-        )
-
-        # local->global mapping (0-based Q indices)
+        # ----------------------------
+        # 3) KG^(3) – siatka 12x12 na dole + szybkie wypełnienie (2 miejsca po przecinku)
+        # ----------------------------
         loc_to_glob3 = {
-            0: 2,  # ih -> Q3
-            1: 3,  # iv -> Q4
-            2: 4,  # jh -> Q5
-            3: 5,  # jv -> Q6
-            4: 6,  # kh -> Q7
-            5: 7,  # kv -> Q8
+            0: 2,  # Q3
+            1: 3,  # Q4
+            2: 4,  # Q5
+            3: 5,  # Q6
+            4: 6,  # Q7
+            5: 7,  # Q8
         }
 
-        # KG grid rectangles
         cell_w = 0.44
         cell_h = 0.30
-        grid_cols = 12
         grid_rows = 12
+        grid_cols = 12
 
-        kg3_cells = VGroup()
+        grid_cells = VGroup()
         for r in range(grid_rows):
             for c in range(grid_cols):
                 rect = Rectangle(width=cell_w, height=cell_h, stroke_width=1.6)
                 rect.set_stroke(WHITE, opacity=0.85)
                 rect.set_fill(opacity=0.0)
-                kg3_cells.add(rect)
+                grid_cells.add(rect)
 
-        kg3_grid = VGroup()
+        grid_group = VGroup()
         idx = 0
         for r in range(grid_rows):
             row = VGroup()
             for c in range(grid_cols):
-                row.add(kg3_cells[idx])
+                row.add(grid_cells[idx])
                 idx += 1
             row.arrange(RIGHT, buff=0.0)
-            kg3_grid.add(row)
-        kg3_grid.arrange(DOWN, buff=0.0)
+            grid_group.add(row)
+        grid_group.arrange(DOWN, buff=0.0)
 
-        # brackets + title (always follow grid)
-        kg3_left_br_raw  = MathTex(r"\left[").set_color(WHITE)
-        kg3_right_br_raw = MathTex(r"\right]").set_color(WHITE)
+        kg3_title = MathTex(r"\mathbf{K}_G^{(3)} =").scale(0.85)
 
-        def fit_bracket_height(br, target_height, pad=1.02):
-            b = br.copy()
-            b.stretch_to_fit_height(target_height * pad)
-            return b
-
-        kg3_left_br = always_redraw(
-            lambda: fit_bracket_height(kg3_left_br_raw, kg3_grid.height, pad=1.03)
-                .next_to(kg3_grid, LEFT, buff=0.15)
-                .align_to(kg3_grid, DOWN)
-        )
-        kg3_right_br = always_redraw(
-            lambda: fit_bracket_height(kg3_right_br_raw, kg3_grid.height, pad=1.03)
-                .next_to(kg3_grid, RIGHT, buff=0.15)
-                .align_to(kg3_grid, DOWN)
-        )
-        kg3_title = always_redraw(
-            lambda: MathTex(r"\mathbf{K}_G^{(3)} =").scale(0.85).next_to(kg3_grid, UP, buff=0.55)
-        )
-
-        # Q labels
-        kg3_top_labels  = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.45) for k in range(1, 13)])
+        kg3_top_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.45) for k in range(1, 13)])
         kg3_left_labels = VGroup(*[MathTex(fr"Q_{{{k}}}").scale(0.55) for k in range(1, 13)])
 
         for c in range(12):
-            col_center = kg3_grid[0][c].get_center()
-            kg3_top_labels[c].move_to(col_center + UP * 0.40).rotate(PI/2)
+            col_center = grid_group[0][c].get_center()
+            kg3_top_labels[c].move_to(col_center + UP*0.40).rotate(PI/2)
 
         for r in range(12):
-            row_center = kg3_grid[r][0].get_center()
-            kg3_left_labels[r].move_to(row_center + LEFT * 0.75)
+            row_center = grid_group[r][0].get_center()
+            kg3_left_labels[r].move_to(row_center + LEFT*0.75)
 
-        # braces + node circles (pairs)
-        kg3_pair_braces = VGroup()
-        kg3_node_circles = VGroup()
-        for p in range(6):
-            r0 = 2*p
-            r1 = 2*p + 1
-            pair = VGroup(kg3_left_labels[r0], kg3_left_labels[r1])
-            brace = Brace(pair, LEFT, buff=0.10)
-            circ = Circle(radius=0.18, color=BLUE, stroke_width=3)
-            num = MathTex(str(p+1)).scale(0.45).set_color(BLUE)
-            circ_grp = VGroup(circ, num)
-            circ_grp.next_to(brace, LEFT, buff=0.18)
-            kg3_pair_braces.add(brace)
-            kg3_node_circles.add(circ_grp)
-
-        kg3_pack = VGroup(
-            kg3_title, kg3_left_br, kg3_right_br,
-            kg3_grid, kg3_top_labels, kg3_left_labels, kg3_pair_braces, kg3_node_circles
-        )
+        kg3_pack = VGroup(kg3_title, grid_group, kg3_top_labels, kg3_left_labels)
+        kg3_pack.set_z_index(20)
 
         kg3_pack.scale(1.05)
-        kg3_pack.to_edge(DOWN, buff=0.25).shift(LEFT * 1.1)
+        kg3_pack.to_edge(DOWN, buff=0.22).shift(LEFT*0.75)
+        kg3_title.next_to(grid_group, UP, buff=0.55)
 
-        # safety clamp inside frame
-        bottom_limit = -config.frame_height/2 + 0.20
-        if kg3_pack.get_bottom()[1] < bottom_limit:
-            kg3_pack.shift(UP * (bottom_limit - kg3_pack.get_bottom()[1]))
-        left_limit = -config.frame_width/2 + 0.20
-        if kg3_pack.get_left()[0] < left_limit:
-            kg3_pack.shift(RIGHT * (left_limit - kg3_pack.get_left()[0]))
+        if kg3_pack.get_right()[0] > T3_full.get_left()[0] - 0.25:
+            kg3_pack.shift(LEFT * (kg3_pack.get_right()[0] - (T3_full.get_left()[0] - 0.25)))
 
-        # avoid collision with topo on right
-        if kg3_pack.get_right()[0] > topo3_pack.get_left()[0] - 0.25:
-            kg3_pack.shift(LEFT * (kg3_pack.get_right()[0] - (topo3_pack.get_left()[0] - 0.25)))
+        clamp_to_frame(kg3_pack)
 
-        # show KG^(3)
-        self.play(FadeIn(kg3_title), run_time=0.4)
-        self.play(FadeIn(kg3_grid), FadeIn(kg3_left_br), FadeIn(kg3_right_br), run_time=0.7)
-        self.play(LaggedStartMap(FadeIn, kg3_top_labels, lag_ratio=0.03), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, kg3_left_labels, lag_ratio=0.03), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, kg3_pair_braces, lag_ratio=0.06), run_time=0.6)
-        self.play(LaggedStartMap(FadeIn, kg3_node_circles, lag_ratio=0.06), run_time=0.6)
+        self.play(FadeIn(kg3_title), run_time=0.35)
+        self.play(FadeIn(grid_group), run_time=0.65)
+        self.play(LaggedStartMap(FadeIn, kg3_top_labels, lag_ratio=0.02), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, kg3_left_labels, lag_ratio=0.02), run_time=0.6)
 
-        # formula near title
         kg3_formula = MathTex(r"\mathbf{T}_3^T \mathbf{K}_3 \mathbf{T}_3 \cdot 10^6").scale(0.55)
+        kg3_formula.set_z_index(25)
         kg3_formula.next_to(kg3_title, RIGHT, buff=0.15)
-        self.play(FadeIn(kg3_formula), run_time=0.5)
-        self.wait(0.3)
+        self.play(FadeIn(kg3_formula), run_time=0.45)
 
-        # helpers for KG cell center
-        def KG3_cell_center(qr_0based, qc_0based):
-            return kg3_grid[qr_0based][qc_0based].get_center()
+        def KG_cell_center(qr_0based, qc_0based):
+            return grid_group[qr_0based][qc_0based].get_center()
 
-        def make_KG3_value(text):
+        def make_KG_value(text):
             return MathTex(text).scale(0.33)
 
-        # fill mapped 6x6 block into KG^(3)
-        placed3 = VGroup()
+        kg3_values = VGroup()
         for li in range(6):
             for lj in range(6):
                 gi = loc_to_glob3[li]
                 gj = loc_to_glob3[lj]
                 val = K3_data_vis[li][lj]
-                m = make_KG3_value(val)
-                m.move_to(KG3_cell_center(gi, gj))
+                if str(val).strip() == "0":
+                    continue
+                m = make_KG_value(val)
+                m.move_to(KG_cell_center(gi, gj))
                 m.set_opacity(0.95)
-                placed3.add(m)
+                kg3_values.add(m)
 
-        self.play(FadeIn(placed3), run_time=0.9)
-        self.wait(2.0)
-
-        # (optional) hold end
+        self.play(FadeIn(kg3_values), run_time=0.85)
         self.wait(2.0)
 
 
