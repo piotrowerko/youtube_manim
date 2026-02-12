@@ -3795,7 +3795,270 @@ class MESStructureScene(Scene):
         self.play(FadeIn(kg3_values), run_time=0.85)
         self.wait(2.0)
 
+        # ============================================================
+        # NOWY KROK: Globalna macierz sztywności K_glob
+        # K_glob = K_G^{(1)} + K_G^{(2)} + K_G^{(3)}
+        # ============================================================
 
+        # --- 0) CLEANUP: wyczyść całą scenę ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.2)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # --- Pozycje niezerowe każdego elementu w globalnej macierzy 12×12 ---
+        K1g_pos = {(loc_to_glob[i], loc_to_glob[j])
+                   for i in range(8) for j in range(8)}
+        K2g_pos = {(loc_to_glob2[i], loc_to_glob2[j])
+                   for i in range(6) for j in range(6)}
+        K3g_pos = {(loc_to_glob3[i], loc_to_glob3[j])
+                   for i in range(6) for j in range(6)}
+
+        # --- Kglob data (÷10^6, zaokrąglone do 2 miejsc po przecinku) ---
+        Kglob_vis = [
+            ["7.34","-2.16","2.28","0.08","0","0","0","0","-3.67","2.16","-5.95","-0.08"],
+            ["-2.16","4.94","-0.08","-1.81","0","0","0","0","2.16","-2.47","0.08","-0.66"],
+            ["2.28","-0.08","17.92","-2.16","0","-2.09","-4.17","4.33","-12.36","2.16","-3.67","-2.16"],
+            ["0.08","-1.81","-2.16","19.85","-2.24","0","4.33","-12.83","2.16","-2.75","-2.16","-2.47"],
+            ["0","0","0","-2.24","6.41","0","-6.41","2.24","0","0","0","0"],
+            ["0","0","-2.09","0","0","2.09","2.09","-2.09","0","0","0","0"],
+            ["0","0","-4.17","4.33","-6.41","2.09","10.58","-4.33","0","-2.09","0","0"],
+            ["0","0","4.33","-12.83","2.24","-2.09","-4.33","14.91","-2.24","0","0","0"],
+            ["-3.67","2.16","-12.36","2.16","0","0","0","-2.24","13.75","-2.16","2.28","0.08"],
+            ["2.16","-2.47","2.16","-2.75","0","0","-2.09","0","-2.16","7.02","-0.08","-1.81"],
+            ["-5.95","0.08","-3.67","-2.16","0","0","0","0","2.28","-0.08","7.34","2.16"],
+            ["-0.08","-0.66","-2.16","-2.47","0","0","0","0","0.08","-1.81","2.16","4.94"],
+        ]
+
+        # --- 1) Tytuł sekcji ---
+        section_title = Text("Global stiffness matrix", font_size=40)
+        section_title.to_edge(UP, buff=0.40)
+        self.play(Write(section_title), run_time=1.0)
+
+        # Równanie sumowania
+        sum_eq = MathTex(
+            r"\mathbf{K}_{glob}", "=",
+            r"\mathbf{K}_G^{(1)}", "+",
+            r"\mathbf{K}_G^{(2)}", "+",
+            r"\mathbf{K}_G^{(3)}"
+        ).scale(0.80)
+        sum_eq[2].set_color(BLUE)
+        sum_eq[4].set_color(GREEN)
+        sum_eq[6].set_color(ORANGE)
+        sum_eq.next_to(section_title, DOWN, buff=0.25)
+        self.play(Write(sum_eq), run_time=1.0)
+        self.wait(0.5)
+
+        # --- 2) Trzy mini siatki 12×12 – wzory sparsity (kolorowe niezerowe pozycje) ---
+        mcw, mch = 0.15, 0.12
+
+        def build_mini_kg(positions, color, tex_label):
+            """Buduje małą siatkę 12×12 z kolorowymi komórkami w pozycjach niezerowych."""
+            g = VGroup()
+            for r in range(12):
+                rg = VGroup()
+                for c in range(12):
+                    rect = Rectangle(width=mcw, height=mch, stroke_width=0.5)
+                    rect.set_stroke(WHITE, opacity=0.30)
+                    if (r, c) in positions:
+                        rect.set_fill(color, opacity=0.80)
+                    else:
+                        rect.set_fill(BLACK, opacity=0.10)
+                    rg.add(rect)
+                rg.arrange(RIGHT, buff=0)
+                g.add(rg)
+            g.arrange(DOWN, buff=0)
+            lbl = MathTex(tex_label).scale(0.50).set_color(color)
+            lbl.next_to(g, UP, buff=0.10)
+            return VGroup(lbl, g)
+
+        mg1 = build_mini_kg(K1g_pos, BLUE, r"\mathbf{K}_G^{(1)}")
+        mg2 = build_mini_kg(K2g_pos, GREEN, r"\mathbf{K}_G^{(2)}")
+        mg3 = build_mini_kg(K3g_pos, ORANGE, r"\mathbf{K}_G^{(3)}")
+
+        ps1 = MathTex("+").scale(0.60)
+        ps2 = MathTex("+").scale(0.60)
+        mini_row = VGroup(mg1, ps1, mg2, ps2, mg3).arrange(RIGHT, buff=0.25)
+        mini_row.next_to(sum_eq, DOWN, buff=0.30)
+        clamp_to_frame(mini_row)
+
+        self.play(LaggedStart(
+            FadeIn(mg1, shift=UP * 0.2),
+            FadeIn(ps1),
+            FadeIn(mg2, shift=UP * 0.2),
+            FadeIn(ps2),
+            FadeIn(mg3, shift=UP * 0.2),
+            lag_ratio=0.12,
+        ), run_time=1.5)
+        self.wait(1.5)
+
+        # --- 3) Budowa docelowej dużej siatki Kglob 12×12 ---
+        fcw, fch = 0.44, 0.30
+
+        final_grid = VGroup()
+        for r in range(12):
+            rg = VGroup()
+            for c in range(12):
+                rect = Rectangle(width=fcw, height=fch, stroke_width=1.2)
+                rect.set_stroke(WHITE, opacity=0.80)
+                nc = (int((r, c) in K1g_pos)
+                      + int((r, c) in K2g_pos)
+                      + int((r, c) in K3g_pos))
+                if nc == 0:
+                    rect.set_fill(BLACK, opacity=0.05)
+                elif nc == 1:
+                    col = (BLUE if (r, c) in K1g_pos
+                           else GREEN if (r, c) in K2g_pos
+                           else ORANGE)
+                    rect.set_fill(col, opacity=0.20)
+                elif nc == 2:
+                    rect.set_fill(YELLOW, opacity=0.15)
+                else:
+                    rect.set_fill(WHITE, opacity=0.15)
+                rg.add(rect)
+            rg.arrange(RIGHT, buff=0)
+            final_grid.add(rg)
+        final_grid.arrange(DOWN, buff=0)
+        final_grid.move_to(ORIGIN + DOWN * 0.25)
+
+        # Tytuł nad siatką
+        kglob_title = MathTex(
+            r"\mathbf{K}_{glob} = 10^6 \cdot"
+        ).scale(0.72)
+        kglob_title.next_to(final_grid, UP, buff=0.38)
+
+        # Q etykiety (góra i lewo)
+        kq_top = VGroup(*[
+            MathTex(fr"Q_{{{k}}}").scale(0.35) for k in range(1, 13)
+        ])
+        kq_left = VGroup(*[
+            MathTex(fr"Q_{{{k}}}").scale(0.42) for k in range(1, 13)
+        ])
+        for ci in range(12):
+            kq_top[ci].move_to(
+                final_grid[0][ci].get_center() + UP * 0.28
+            ).rotate(PI / 2)
+        for ri in range(12):
+            kq_left[ri].move_to(
+                final_grid[ri][0].get_center() + LEFT * 0.52
+            )
+
+        # Nawiasy kwadratowe
+        br_l = MathTex(r"\left[").set_color(WHITE)
+        br_r = MathTex(r"\right]").set_color(WHITE)
+        br_l.stretch_to_fit_height(final_grid.height * 1.03)
+        br_l.next_to(final_grid, LEFT, buff=0.10).align_to(final_grid, DOWN)
+        br_r.stretch_to_fit_height(final_grid.height * 1.03)
+        br_r.next_to(final_grid, RIGHT, buff=0.10).align_to(final_grid, DOWN)
+
+        # Nawiasy klamrowe + kółka z numerami węzłów
+        kg_braces = VGroup()
+        kg_circles = VGroup()
+        for p in range(6):
+            pair = VGroup(kq_left[2 * p], kq_left[2 * p + 1])
+            brace = Brace(pair, LEFT, buff=0.07)
+            circ = Circle(radius=0.14, color=BLUE, stroke_width=2.5)
+            num = MathTex(str(p + 1)).scale(0.38).set_color(BLUE)
+            cg = VGroup(circ, num).move_to(circ.get_center())
+            cg.next_to(brace, LEFT, buff=0.10)
+            kg_braces.add(brace)
+            kg_circles.add(cg)
+
+        # Clamp całości w ramce sceny
+        full_kglob = VGroup(
+            final_grid, kglob_title, kq_top, kq_left,
+            br_l, br_r, kg_braces, kg_circles
+        )
+        clamp_to_frame(full_kglob)
+
+        # --- 4) Animacja łączenia: mini siatki → duża siatka Kglob ---
+        target = final_grid.get_center()
+
+        # (a) Tytuły mini, plusy, equation, section_title znikają;
+        #     gridy lecą do centrum i bledną
+        self.play(
+            FadeOut(ps1), FadeOut(ps2),
+            FadeOut(mg1[0]), FadeOut(mg2[0]), FadeOut(mg3[0]),
+            FadeOut(sum_eq), FadeOut(section_title),
+            mg1[1].animate.move_to(target).set_opacity(0.4),
+            mg2[1].animate.move_to(target).set_opacity(0.4),
+            mg3[1].animate.move_to(target).set_opacity(0.4),
+            run_time=1.3,
+        )
+
+        # (b) Cross-dissolve: mini gridy znikają → duża siatka pojawia się z lekkim zoomem
+        self.play(
+            FadeOut(mg1[1]), FadeOut(mg2[1]), FadeOut(mg3[1]),
+            FadeIn(final_grid, scale=1.05),
+            FadeIn(br_l), FadeIn(br_r),
+            run_time=0.9,
+        )
+
+        # (c) Tytuł, etykiety, nawiasy klamrowe
+        self.play(FadeIn(kglob_title), run_time=0.4)
+        self.play(
+            LaggedStartMap(FadeIn, kq_top, lag_ratio=0.02),
+            run_time=0.5,
+        )
+        self.play(
+            LaggedStartMap(FadeIn, kq_left, lag_ratio=0.02),
+            run_time=0.5,
+        )
+        self.play(
+            LaggedStartMap(FadeIn, kg_braces, lag_ratio=0.04),
+            LaggedStartMap(FadeIn, kg_circles, lag_ratio=0.04),
+            run_time=0.5,
+        )
+        self.wait(0.3)
+
+        # Równanie-reminder obok tytułu (kolorowe, żeby widz pamiętał skład)
+        eq_rem = MathTex(
+            r"\left(",
+            r"\mathbf{K}_G^{(1)}", "+",
+            r"\mathbf{K}_G^{(2)}", "+",
+            r"\mathbf{K}_G^{(3)}",
+            r"\right)"
+        ).scale(0.45)
+        eq_rem[1].set_color(BLUE)
+        eq_rem[3].set_color(GREEN)
+        eq_rem[5].set_color(ORANGE)
+        eq_rem.next_to(kglob_title, RIGHT, buff=0.12)
+        self.play(FadeIn(eq_rem), run_time=0.4)
+
+        # --- 5) Wartości Kglob – efekt fali od przekątnej ---
+        val_list = []
+        for r in range(12):
+            for c in range(12):
+                v = Kglob_vis[r][c]
+                if v.strip() == "0":
+                    continue
+                m = MathTex(v).scale(0.26)
+                m.move_to(final_grid[r][c].get_center())
+                val_list.append((abs(r - c), r, c, m))
+
+        val_list.sort(key=lambda x: (x[0], x[1], x[2]))
+        kglob_vals = VGroup(*[it[3] for it in val_list])
+
+        self.play(
+            LaggedStartMap(FadeIn, kglob_vals, lag_ratio=0.008),
+            run_time=2.5,
+        )
+        self.wait(0.5)
+
+        # Flash diagonali (szybkie podświetlenie)
+        diag_hl = VGroup(*[
+            SurroundingRectangle(
+                final_grid[i][i], color=YELLOW,
+                buff=0.01, stroke_width=2.0
+            )
+            for i in range(12)
+        ])
+        self.play(FadeIn(diag_hl), run_time=0.35)
+        self.play(FadeOut(diag_hl), run_time=0.5)
+
+        self.wait(3.0)
 
 
 if __name__ == "__main__":
