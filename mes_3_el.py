@@ -4060,6 +4060,295 @@ class MESStructureScene(Scene):
 
         self.wait(3.0)
 
+        # ============================================================
+        # NOWY KROK: Distributed Load on Element III
+        # Show syn_el_3 with load, then derive q(x₃) = 4x₃ − 16
+        # ============================================================
+
+        # --- 0) Fade out Kglob ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # --- helpers (local scope) ---
+        def clamp_to_frame(mobj, top=0.25, bottom=0.20, left=0.20, right=0.20):
+            tl =  config.frame_height / 2 - top
+            bl = -config.frame_height / 2 + bottom
+            ll = -config.frame_width / 2  + left
+            rl =  config.frame_width / 2  - right
+            if mobj.get_top()[1]    > tl: mobj.shift(DOWN  * (mobj.get_top()[1]    - tl))
+            if mobj.get_bottom()[1] < bl: mobj.shift(UP    * (bl - mobj.get_bottom()[1]))
+            if mobj.get_left()[0]   < ll: mobj.shift(RIGHT * (ll - mobj.get_left()[0]))
+            if mobj.get_right()[0]  > rl: mobj.shift(LEFT  * (mobj.get_right()[0]  - rl))
+
+        # --- 1) Title ---
+        load_section_title = Text(
+            "Distributed Load on Element III", font_size=36
+        ).to_edge(UP, buff=0.35)
+        self.play(Write(load_section_title), run_time=0.8)
+        self.wait(0.3)
+
+        # --- 2) Build element 3 (fresh, in local coords) ---
+        # Local coords: i=(0,0), j=(2,2), k=(0,2)
+        SC = 1.35
+        EL_ORG = np.array([-3.2, -1.6, 0])
+
+        def lpt(x, y):
+            return EL_ORG + SC * RIGHT * x + SC * UP * y
+
+        pt_i = lpt(0, 0)
+        pt_j = lpt(2, 2)
+        pt_k = lpt(0, 2)
+
+        # Triangle
+        el3_tri = Polygon(
+            pt_i, pt_j, pt_k,
+            stroke_width=3, color=WHITE,
+            fill_color=BLUE_E, fill_opacity=0.12
+        )
+
+        # Colored edges (top=TEAL, left=ORANGE, hypotenuse=BLUE)
+        el3_e_top  = Line(pt_k, pt_j, color=TEAL,   stroke_width=4)
+        el3_e_left = Line(pt_i, pt_k, color=ORANGE,  stroke_width=4)
+        el3_e_hyp  = Line(pt_i, pt_j, color=BLUE_D,  stroke_width=3)
+
+        # Node circles
+        def _node_circ(num_s, pos, sv):
+            c = Circle(radius=0.17, color=BLUE, stroke_width=2.5)
+            n = MathTex(num_s).scale(0.38).set_color(BLUE)
+            g = VGroup(c, n).move_to(pos + sv)
+            n.move_to(g.get_center())
+            return g
+
+        nc_2 = _node_circ("2", pt_i, DOWN * 0.28 + LEFT * 0.18)
+        nc_3 = _node_circ("3", pt_j, UP * 0.28 + RIGHT * 0.18)
+        nc_4 = _node_circ("4", pt_k, UP * 0.28 + LEFT * 0.18)
+
+        # Local labels i, j, k
+        loc_i = MathTex("i").scale(0.36).set_color(PINK).move_to(pt_i + UP * 0.26 + RIGHT * 0.20)
+        loc_j = MathTex("j").scale(0.36).set_color(PINK).move_to(pt_j + DOWN * 0.28 + LEFT * 0.26)
+        loc_k = MathTex("k").scale(0.36).set_color(PINK).move_to(pt_k + DOWN * 0.26 + RIGHT * 0.22)
+
+        # Element label
+        el3_ctr = (pt_i + pt_j + pt_k) / 3
+        el3_name = MathTex(r"e.\,III").scale(0.48).set_color(GREEN).move_to(el3_ctr)
+
+        # Local coordinate system x₃, y₃ at node i
+        ax_l = 0.80
+        x3_arrow = Arrow(
+            pt_i + LEFT * 0.06, pt_i + RIGHT * ax_l,
+            buff=0, stroke_width=3, color=RED,
+            max_tip_length_to_length_ratio=0.15
+        )
+        y3_arrow = Arrow(
+            pt_i + DOWN * 0.06, pt_i + UP * ax_l,
+            buff=0, stroke_width=3, color=RED,
+            max_tip_length_to_length_ratio=0.15
+        )
+        x3_lbl_new = MathTex("x_3").scale(0.36).set_color(RED)
+        x3_lbl_new.next_to(x3_arrow, RIGHT + DOWN, buff=0.05)
+        y3_lbl_new = MathTex("y_3").scale(0.36).set_color(RED)
+        y3_lbl_new.next_to(y3_arrow, UP + LEFT, buff=0.05)
+
+        el3_vis = VGroup(
+            el3_tri, el3_e_top, el3_e_left, el3_e_hyp,
+            nc_2, nc_3, nc_4,
+            loc_i, loc_j, loc_k,
+            el3_name,
+            x3_arrow, y3_arrow, x3_lbl_new, y3_lbl_new,
+        )
+        clamp_to_frame(el3_vis)
+
+        self.play(Create(el3_tri), run_time=0.6)
+        self.play(
+            Create(el3_e_top), Create(el3_e_left), Create(el3_e_hyp),
+            FadeIn(el3_name),
+            run_time=0.5,
+        )
+        self.play(
+            FadeIn(VGroup(nc_2, nc_3, nc_4)),
+            FadeIn(VGroup(loc_i, loc_j, loc_k)),
+            run_time=0.4,
+        )
+        self.play(
+            Create(x3_arrow), Create(y3_arrow),
+            FadeIn(x3_lbl_new), FadeIn(y3_lbl_new),
+            run_time=0.4,
+        )
+        self.wait(0.5)
+
+        # --- 3) Distributed load on top edge (k → j, at y₃ = 2) ---
+        # At x₃=0 (node k): 16 kN/m  ↓
+        # At x₃=2 (node j):  8 kN/m  ↓
+        n_la = 9
+        load_arr = VGroup()
+        la_max = 1.35
+        la_min = 0.68
+        for idx in range(n_la):
+            t = idx / (n_la - 1)
+            base = lpt(t * 2, 2)
+            alen = interpolate(la_max, la_min, t)
+            arr = Arrow(
+                base + UP * alen, base,
+                buff=0, stroke_width=2.5,
+                max_tip_length_to_length_ratio=0.18,
+                color=YELLOW_A,
+            )
+            load_arr.add(arr)
+
+        # Envelope (trapezoid top line)
+        load_env = Line(
+            load_arr[0].get_start(), load_arr[-1].get_start(),
+            color=YELLOW, stroke_width=2, stroke_opacity=0.7,
+        )
+
+        # Labels
+        lbl_q16 = MathTex(r"16\;\text{kN/m}").scale(0.40).set_color(YELLOW)
+        lbl_q16.next_to(load_arr[0], LEFT, buff=0.10)
+        lbl_q8 = MathTex(r"8\;\text{kN/m}").scale(0.40).set_color(YELLOW)
+        lbl_q8.next_to(load_arr[-1], RIGHT, buff=0.10)
+
+        self.play(
+            LaggedStartMap(Create, load_arr, lag_ratio=0.06),
+            run_time=1.0,
+        )
+        self.play(
+            Create(load_env),
+            FadeIn(lbl_q16), FadeIn(lbl_q8),
+            run_time=0.6,
+        )
+        self.wait(1.5)
+
+        # --- 4) Derive the load function q(x₃) = 4x₃ − 16 ---
+        deriv_anchor = np.array([3.2, 2.4, 0])
+
+        dt = Text("Load as a linear function:", font_size=28)
+        dt.move_to(deriv_anchor)
+
+        v1 = MathTex(r"q(0) = -16 \;\text{kN/m}").scale(0.46)
+        v1.next_to(dt, DOWN, buff=0.28)
+
+        v2 = MathTex(r"q(2) = -8 \;\text{kN/m}").scale(0.46)
+        v2.next_to(v1, DOWN, buff=0.16)
+
+        slope_tex = MathTex(
+            r"a = \frac{-8 - (-16)}{2 - 0} = \frac{8}{2} = 4"
+        ).scale(0.44)
+        slope_tex.next_to(v2, DOWN, buff=0.30)
+
+        func_eq = MathTex(
+            r"q(x_3) = 4\,x_3 - 16"
+        ).scale(0.58).set_color(YELLOW)
+        func_eq.next_to(slope_tex, DOWN, buff=0.32)
+
+        func_box = SurroundingRectangle(
+            func_eq, color=YELLOW, buff=0.12, stroke_width=2.5
+        )
+
+        self.play(Write(dt), run_time=0.6)
+        self.play(Write(v1), run_time=0.5)
+        self.play(Write(v2), run_time=0.5)
+        self.wait(0.3)
+        self.play(Write(slope_tex), run_time=0.8)
+        self.wait(0.3)
+        self.play(Write(func_eq), run_time=0.7)
+        self.play(Create(func_box), run_time=0.4)
+        self.wait(1.0)
+
+        # --- 5) Small plot of q(x₃) on the right-bottom ---
+        plot_org = np.array([2.8, -0.8, 0])
+        px_len = 2.6
+        py_len = 2.2
+
+        # x₃ axis
+        p_xax = Arrow(
+            plot_org + LEFT * 0.12, plot_org + RIGHT * px_len,
+            buff=0, stroke_width=2, color=WHITE,
+            max_tip_length_to_length_ratio=0.06,
+        )
+        p_xlbl = MathTex("x_3").scale(0.34).next_to(p_xax, DOWN, buff=0.06)
+        p_xlbl.align_to(p_xax, RIGHT)
+
+        # q axis (positive up, but values are negative → axis points down)
+        p_qax = Arrow(
+            plot_org + UP * 0.20, plot_org + DOWN * py_len,
+            buff=0, stroke_width=2, color=WHITE,
+            max_tip_length_to_length_ratio=0.06,
+        )
+        p_qlbl = MathTex("q").scale(0.34).next_to(p_qax, LEFT, buff=0.06)
+        p_qlbl.align_to(p_qax, DOWN)
+
+        # Scale
+        xs = (px_len - 0.25) / 2.0
+        qs = (py_len - 0.25) / 16.0
+
+        # Tick labels
+        tk_x2  = MathTex("2").scale(0.30).move_to(plot_org + RIGHT * 2 * xs + UP * 0.18)
+        tk_q8  = MathTex("-8").scale(0.30).move_to(plot_org + DOWN * 8 * qs + LEFT * 0.32)
+        tk_q16 = MathTex("-16").scale(0.30).move_to(plot_org + DOWN * 16 * qs + LEFT * 0.35)
+
+        # Dashed helper lines
+        dsh_v = DashedLine(
+            plot_org + RIGHT * 2 * xs,
+            plot_org + RIGHT * 2 * xs + DOWN * 8 * qs,
+            color=GREY, stroke_width=1, dash_length=0.06,
+        )
+        dsh_h8 = DashedLine(
+            plot_org + DOWN * 8 * qs,
+            plot_org + RIGHT * 2 * xs + DOWN * 8 * qs,
+            color=GREY, stroke_width=1, dash_length=0.06,
+        )
+        dsh_h16 = DashedLine(
+            plot_org + DOWN * 16 * qs,
+            plot_org + DOWN * 16 * qs + RIGHT * 0.12,
+            color=GREY, stroke_width=1, dash_length=0.06,
+        )
+
+        # Function line from (0, −16) to (2, −8)
+        fp_0 = plot_org + DOWN * 16 * qs
+        fp_2 = plot_org + RIGHT * 2 * xs + DOWN * 8 * qs
+        f_line = Line(fp_0, fp_2, color=BLUE, stroke_width=4)
+
+        # Dots at endpoints
+        f_dot0 = Dot(fp_0, color=YELLOW, radius=0.06)
+        f_dot2 = Dot(fp_2, color=YELLOW, radius=0.06)
+
+        # Label on the line
+        f_line_lbl = MathTex(r"q = 4x_3 - 16").scale(0.36).set_color(BLUE)
+        f_line_mid = f_line.get_center()
+        f_line_lbl.next_to(f_line_mid, RIGHT, buff=0.15)
+        f_line_lbl.shift(DOWN * 0.15)
+
+        plot_all = VGroup(
+            p_xax, p_xlbl, p_qax, p_qlbl,
+            tk_x2, tk_q8, tk_q16,
+            dsh_v, dsh_h8, dsh_h16,
+            f_line, f_dot0, f_dot2, f_line_lbl,
+        )
+        clamp_to_frame(plot_all)
+
+        self.play(
+            Create(p_xax), Create(p_qax),
+            FadeIn(p_xlbl), FadeIn(p_qlbl),
+            run_time=0.5,
+        )
+        self.play(
+            FadeIn(tk_x2), FadeIn(tk_q8), FadeIn(tk_q16),
+            Create(dsh_v), Create(dsh_h8), Create(dsh_h16),
+            run_time=0.6,
+        )
+        self.play(
+            Create(f_line),
+            FadeIn(f_dot0), FadeIn(f_dot2),
+            run_time=0.8,
+        )
+        self.play(FadeIn(f_line_lbl), run_time=0.4)
+
+        self.wait(3.0)
+
 
 if __name__ == "__main__":
     import sys
