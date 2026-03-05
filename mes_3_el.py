@@ -4124,8 +4124,8 @@ class MESStructureScene(Scene):
             return g
 
         nc_2 = _node_circ("2", pt_i, DOWN * 0.28 + LEFT * 0.18)
-        nc_3 = _node_circ("3", pt_j, UP * 0.28 + RIGHT * 0.18)
-        nc_4 = _node_circ("4", pt_k, UP * 0.28 + LEFT * 0.18)
+        nc_3 = _node_circ("3", pt_j, DOWN * 0.30 + RIGHT * 0.25)
+        nc_4 = _node_circ("4", pt_k, DOWN * 0.30 + LEFT * 0.25)
 
         # Local labels i, j, k
         loc_i = MathTex("i").scale(0.36).set_color(PINK).move_to(pt_i + UP * 0.26 + RIGHT * 0.20)
@@ -4346,6 +4346,166 @@ class MESStructureScene(Scene):
             run_time=0.8,
         )
         self.play(FadeIn(f_line_lbl), run_time=0.4)
+
+        self.wait(3.0)
+
+        # ============================================================
+        # NOWY KROK: Nodal Load Vector Calculation – Element III
+        # Element stays on the LEFT; math derivation on the RIGHT.
+        # func_eq + func_box move UNDER the element instead of fading.
+        # ============================================================
+
+        # --- 0) Clear right-side derivation + plot, MOVE func_eq under element ---
+        right_fade = VGroup(dt, v1, v2, slope_tex, plot_all)
+        func_eq_target = func_eq.copy().scale(0.75)
+        func_box_target = SurroundingRectangle(
+            func_eq_target, color=YELLOW, buff=0.08, stroke_width=2,
+        )
+        func_target_grp = VGroup(func_eq_target, func_box_target)
+        func_target_grp.next_to(el3_vis, DOWN, buff=0.25)
+
+        self.play(
+            FadeOut(right_fade),
+            FadeOut(load_section_title),
+            func_eq.animate.move_to(func_eq_target.get_center()).scale(0.75),
+            func_box.animate.move_to(func_box_target.get_center()).scale(0.75),
+            run_time=1.0,
+        )
+        for m in right_fade.get_family():
+            if m in self.mobjects:
+                self.remove(m)
+        self.wait(0.3)
+
+        # --- Right-column geometry ---
+        R_LEFT = 0.4
+        R_TOP  = 3.5
+        SC_MAT = 0.38
+
+        # --- 1) Title ---
+        nlv_title = Text(
+            "Edge Nodal Load Vector", font_size=30,
+        ).move_to([R_LEFT + 3.0, R_TOP, 0])
+        self.play(Write(nlv_title), run_time=0.7)
+
+        # --- 1b) General formula ---
+        gen_formula = MathTex(
+            r"\mathbf{f}^{\,\text{edge}}_e"
+            r"= \int_{\Gamma} \mathbf{N}^T \cdot \mathbf{t} \; d\Gamma"
+        ).scale(0.44)
+        gen_formula.next_to(nlv_title, DOWN, buff=0.20)
+        self.play(FadeIn(gen_formula), run_time=0.6)
+        self.wait(1.0)
+
+        # --- 2) Original N3 (with x, y) → then replace by y=2 version ---
+        n3_orig = MathTex(
+            r"\mathbf{N}_3 \!=\!"
+            r"\begin{bmatrix}"
+            r"1{-}\tfrac{y}{2} & 0 & \tfrac{x}{2} & 0"
+            r"& \tfrac{y{-}x}{2} & 0 \\"
+            r"0 & 1{-}\tfrac{y}{2} & 0 & \tfrac{x}{2}"
+            r"& 0 & \tfrac{y{-}x}{2}"
+            r"\end{bmatrix}"
+        ).scale(SC_MAT)
+        n3_orig.next_to(gen_formula, DOWN, buff=0.18).align_to(gen_formula, LEFT)
+
+        self.play(FadeIn(n3_orig), run_time=0.6)
+        self.wait(1.0)
+
+        # --- 3) Substitute y = 2 ---
+        n3y2 = MathTex(
+            r"y{=}2:\;\mathbf{N}_3\big|_{y=2} \!=\!"
+            r"\begin{bmatrix}"
+            r"0 & 0 & \tfrac{x}{2} & 0 & 1{-}\tfrac{x}{2} & 0 \\"
+            r"0 & 0 & 0 & \tfrac{x}{2} & 0 & 1{-}\tfrac{x}{2}"
+            r"\end{bmatrix}"
+        ).scale(SC_MAT)
+        n3y2.move_to(n3_orig, aligned_edge=LEFT)
+
+        self.play(FadeOut(n3_orig), FadeIn(n3y2), run_time=0.6)
+        self.wait(0.8)
+
+        # --- 4) N3^T and load vector q ---
+        n3t = MathTex(
+            r"\mathbf{N}_3^T \!=\!"
+            r"\begin{bmatrix}"
+            r"0 & 0 \\"
+            r"0 & 0 \\"
+            r"\tfrac{x}{2} & 0 \\"
+            r"0 & \tfrac{x}{2} \\"
+            r"1{-}\tfrac{x}{2} & 0 \\"
+            r"0 & 1{-}\tfrac{x}{2}"
+            r"\end{bmatrix}"
+        ).scale(SC_MAT)
+
+        q_vec = MathTex(
+            r"\mathbf{q} \!=\!"
+            r"\begin{bmatrix} 0 \\ 4x{-}16 \end{bmatrix}"
+        ).scale(SC_MAT + 0.02)
+
+        n3t.next_to(n3y2, DOWN, buff=0.18).align_to(n3y2, LEFT)
+        q_vec.next_to(n3t, RIGHT, buff=0.40).align_to(n3t, UP)
+
+        self.play(FadeIn(n3t), run_time=0.5)
+        self.play(FadeIn(q_vec), run_time=0.4)
+        self.wait(0.8)
+
+        # --- 5) Product N3^T · q — below N3^T and q (new row) ---
+        prod = MathTex(
+            r"\mathbf{N}_3^T \!\cdot\! \mathbf{q} \!=\!"
+            r"\begin{bmatrix}"
+            r"0 \\ 0 \\ 0 \\"
+            r"\tfrac{x}{2}(4x{-}16) \\"
+            r"0 \\"
+            r"(1{-}\tfrac{x}{2})(4x{-}16)"
+            r"\end{bmatrix}"
+        ).scale(SC_MAT)
+        prod.next_to(VGroup(n3t, q_vec), DOWN, buff=0.18).align_to(n3t, LEFT)
+
+        self.play(FadeIn(prod), run_time=0.6)
+        self.wait(1.2)
+
+        # --- 6) Integration result — next row below prod ---
+        int_eq = MathTex(
+            r"\mathbf{f}_3^{\,\text{edge}}"
+            r"= \int_0^2 \mathbf{N}_3^T \!\cdot\! \mathbf{q} \; dx"
+            r"= \begin{bmatrix}"
+            r"0 \\ 0 \\ 0 \\"
+            r"-\frac{32}{3} \\"
+            r"0 \\"
+            r"-\frac{40}{3}"
+            r"\end{bmatrix}"
+            r"\;\text{kN}"
+        ).scale(SC_MAT + 0.04)
+        int_eq.next_to(prod, DOWN, buff=0.20).align_to(n3t, LEFT)
+
+        bot_lim = -config.frame_height / 2 + 0.15
+        if int_eq.get_bottom()[1] < bot_lim:
+            int_eq.shift(UP * (bot_lim - int_eq.get_bottom()[1]))
+
+        self.play(Write(int_eq), run_time=1.2)
+        self.wait(0.5)
+
+        result_box_nlv = SurroundingRectangle(
+            int_eq, color=YELLOW, buff=0.08, stroke_width=2.5,
+        )
+        self.play(Create(result_box_nlv), run_time=0.4)
+
+        # DOF labels alongside the result vector
+        ieq_r = int_eq.get_right()[0]
+        ieq_t = int_eq.get_top()[1]
+        ieq_b = int_eq.get_bottom()[1]
+        dof_ys = [interpolate(ieq_t - 0.06, ieq_b + 0.06, i / 5) for i in range(6)]
+        dof_labels_col = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.30).set_color(GREY_B)
+            for k in [3, 4, 5, 6, 7, 8]
+        ])
+        for i, lbl in enumerate(dof_labels_col):
+            lbl.move_to([ieq_r + 0.38, dof_ys[i], 0])
+
+        self.play(
+            LaggedStartMap(FadeIn, dof_labels_col, lag_ratio=0.05),
+            run_time=0.5,
+        )
 
         self.wait(3.0)
 
