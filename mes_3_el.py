@@ -4509,6 +4509,304 @@ class MESStructureScene(Scene):
 
         self.wait(3.0)
 
+        # ============================================================
+        # NOWY KROK: Global Reaction Vector
+        # Show structure with support → syn_el_1 → reaction vector
+        # ============================================================
+
+        # --- 0) Clear everything ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # --- helpers ---
+        def clamp_to_frame(mobj, top=0.25, bottom=0.20, left=0.20, right=0.20):
+            tl =  config.frame_height / 2 - top
+            bl = -config.frame_height / 2 + bottom
+            ll = -config.frame_width / 2  + left
+            rl =  config.frame_width / 2  - right
+            if mobj.get_top()[1]    > tl: mobj.shift(DOWN  * (mobj.get_top()[1]    - tl))
+            if mobj.get_bottom()[1] < bl: mobj.shift(UP    * (bl - mobj.get_bottom()[1]))
+            if mobj.get_left()[0]   < ll: mobj.shift(RIGHT * (ll - mobj.get_left()[0]))
+            if mobj.get_right()[0]  > rl: mobj.shift(LEFT  * (mobj.get_right()[0]  - rl))
+
+        # --- 1) Title ---
+        reak_title = Text(
+            "Global Reaction Vector", font_size=36,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(reak_title), run_time=0.8)
+        self.wait(0.3)
+
+        # ==========================================================
+        # LEFT SIDE: Structure with fixed support (bottom edge)
+        # ==========================================================
+        STR_SC = 0.72
+        STR_ORG = np.array([-5.2, -1.2, 0])
+
+        def spt(x, y):
+            return STR_ORG + STR_SC * RIGHT * x + STR_SC * UP * y
+
+        str_raw = [(0, 0), (2, 0), (2, 3), (4, 5), (2, 5), (0, 3)]
+        str_pts = [spt(x, y) for x, y in str_raw]
+
+        str_poly = Polygon(
+            *str_pts, stroke_width=3, color=WHITE,
+            fill_color=BLUE_E, fill_opacity=0.10,
+        )
+
+        # Fixed support hatching on bottom edge (0,0)→(2,0)
+        sup_left  = spt(0, 0)
+        sup_right = spt(2, 0)
+        sup_line = Line(sup_left, sup_right, color=WHITE, stroke_width=3.5)
+        sup_hatch = VGroup()
+        n_h = 8
+        for ih in range(n_h):
+            p = sup_line.point_from_proportion(ih / (n_h - 1))
+            sup_hatch.add(
+                Line(p, p + DOWN * 0.28 + RIGHT * 0.28,
+                     stroke_width=2.5, color=YELLOW_A)
+            )
+
+        # Node labels on structure (in circles)
+        str_node_data = [
+            (2, 0, "1"), (2, 3, "2"), (4, 5, "3"),
+            (2, 5, "4"), (0, 3, "5"), (0, 0, "6"),
+        ]
+        str_node_lbls = VGroup()
+        for x, y, n in str_node_data:
+            pos = spt(x, y)
+            d = Dot(pos, radius=0.04, color=WHITE)
+            circ = Circle(radius=0.18, color=TEAL_A, stroke_width=2)
+            lbl = MathTex(n).scale(0.36).set_color(TEAL_A)
+            centroid = spt(1.67, 2.67)
+            direction = pos - centroid
+            norm_d = np.linalg.norm(direction)
+            if norm_d > 1e-6:
+                direction = direction / norm_d
+            circ_pos = pos + direction * 0.38
+            circ.move_to(circ_pos)
+            lbl.move_to(circ_pos)
+            str_node_lbls.add(VGroup(d, circ, lbl))
+
+        # Partition lines: only horizontal at y=3 and vertical at x=2 (y=3→5)
+        part_lines = VGroup(
+            Line(spt(0, 3), spt(2, 3), stroke_width=1.5, color=GREY_B),
+            Line(spt(2, 3), spt(2, 5), stroke_width=1.5, color=GREY_B),
+        )
+
+        # Element labels
+        el_I   = MathTex(r"I").scale(0.36).set_color(GREEN_A).move_to(spt(1.0, 1.5))
+        el_II  = MathTex(r"II").scale(0.36).set_color(GREEN_A).move_to(spt(1.2, 3.5))
+        el_III = MathTex(r"III").scale(0.36).set_color(GREEN_A).move_to(spt(2.8, 4.3))
+
+        # "Fixed" label
+        fixed_label = Text("fixed", font_size=22, color=YELLOW)
+        fixed_label.next_to(sup_line, DOWN, buff=0.55)
+
+        str_group = VGroup(
+            str_poly, sup_line, sup_hatch, part_lines,
+            str_node_lbls, el_I, el_II, el_III, fixed_label,
+        )
+
+        # ==========================================================
+        # RIGHT SIDE: syn_el_1 (element 1, rectangle)
+        # Nodes: 6(i)=(0,0), 1(j)=(2,0), 2(k)=(2,3), 5(r)=(0,3)
+        # ==========================================================
+        EL_SC = 0.70
+        EL_ORG = np.array([0.8, -1.2, 0])
+
+        def ept(x, y):
+            return EL_ORG + EL_SC * RIGHT * x + EL_SC * UP * y
+
+        ep_i = ept(0, 0)
+        ep_j = ept(2, 0)
+        ep_k = ept(2, 3)
+        ep_r = ept(0, 3)
+
+        el1_poly = Polygon(
+            ep_i, ep_j, ep_k, ep_r,
+            stroke_width=3, color=WHITE,
+            fill_color=BLUE_E, fill_opacity=0.10,
+        )
+
+        # Node circles with global numbers
+        def _nc(num_s, pos, sv):
+            c = Circle(radius=0.18, color=TEAL_A, stroke_width=2.5)
+            n = MathTex(num_s).scale(0.40).set_color(TEAL_A)
+            g = VGroup(c, n).move_to(pos + sv)
+            n.move_to(g.get_center())
+            return g
+
+        el1_nc6 = _nc("6", ep_i, DOWN * 0.30 + LEFT * 0.22)
+        el1_nc1 = _nc("1", ep_j, DOWN * 0.30 + RIGHT * 0.22)
+        el1_nc2 = _nc("2", ep_k, UP * 0.30 + RIGHT * 0.22)
+        el1_nc5 = _nc("5", ep_r, UP * 0.30 + LEFT * 0.22)
+
+        # Local labels i, j, k, r
+        el1_li = MathTex("i").scale(0.42).set_color(MAROON_A).move_to(ep_i + UP * 0.26 + RIGHT * 0.22)
+        el1_lj = MathTex("j").scale(0.42).set_color(MAROON_A).move_to(ep_j + UP * 0.26 + LEFT * 0.22)
+        el1_lk = MathTex("k").scale(0.42).set_color(MAROON_A).move_to(ep_k + DOWN * 0.26 + LEFT * 0.22)
+        el1_lr = MathTex("r").scale(0.42).set_color(MAROON_A).move_to(ep_r + DOWN * 0.26 + RIGHT * 0.22)
+
+        # DOF labels at bottom edge nodes (the supported ones)
+        dof_q11 = MathTex("Q_{11}").scale(0.30).set_color(YELLOW).move_to(ep_i + LEFT * 0.35 + UP * 0.30)
+        dof_q12 = MathTex("Q_{12}").scale(0.30).set_color(YELLOW).move_to(ep_i + RIGHT * 0.35 + DOWN * 0.30)
+        dof_q1  = MathTex("Q_1").scale(0.30).set_color(YELLOW).move_to(ep_j + RIGHT * 0.30 + UP * 0.30)
+        dof_q2  = MathTex("Q_2").scale(0.30).set_color(YELLOW).move_to(ep_j + LEFT * 0.35 + DOWN * 0.30)
+
+        # Element label
+        el1_name = MathTex(r"e.\,I").scale(0.48).set_color(GREEN_A)
+        el1_name.move_to((ep_i + ep_j + ep_k + ep_r) / 4)
+
+        # Bottom edge highlight (the supported edge)
+        el1_bot_edge = Line(ep_i, ep_j, color=YELLOW, stroke_width=5)
+
+        # Hatching under bottom edge (support symbol)
+        el1_hatch = VGroup()
+        for ih in range(7):
+            t = ih / 6
+            p = el1_bot_edge.point_from_proportion(t)
+            el1_hatch.add(
+                Line(p, p + DOWN * 0.22 + RIGHT * 0.22,
+                     stroke_width=2.5, color=YELLOW_A)
+            )
+
+        el1_group = VGroup(
+            el1_poly, el1_bot_edge, el1_hatch,
+            el1_nc6, el1_nc1, el1_nc2, el1_nc5,
+            el1_li, el1_lj, el1_lk, el1_lr,
+            el1_name,
+            dof_q11, dof_q12, dof_q1, dof_q2,
+        )
+
+        # --- Animate: structure on left, element on right ---
+        self.play(
+            FadeIn(str_group),
+            run_time=0.8,
+        )
+        self.play(
+            FadeIn(el1_group),
+            run_time=0.8,
+        )
+        self.wait(1.0)
+
+        # ==========================================================
+        # Ellipse around bottom edge of structure + arrow → reactions
+        # ==========================================================
+        # Ellipse around the fixed support on the structure
+        ellipse_center = (sup_left + sup_right) / 2 + DOWN * 0.12
+        ellipse = Ellipse(
+            width=sup_line.get_length() + 0.5,
+            height=0.65,
+            color=YELLOW, stroke_width=2.5,
+        ).move_to(ellipse_center)
+
+        self.play(Create(ellipse), run_time=0.6)
+        self.wait(0.5)
+
+        # Arrow from ellipse to bottom edge of el1 (shortened 15%)
+        arrow_start = ellipse.get_right() + RIGHT * 0.08
+        arrow_end_full = el1_bot_edge.get_center() + LEFT * 0.6 + DOWN * 0.12
+        arrow_end = arrow_start + (arrow_end_full - arrow_start) * 0.85
+        link_arrow = Arrow(
+            arrow_start, arrow_end,
+            stroke_width=3, color=YELLOW,
+            max_tip_length_to_length_ratio=0.12,
+        )
+        arrow_label = Text(
+            "replaced by\nreactions", font_size=22, color=YELLOW,
+        ).next_to(link_arrow, UP, buff=0.10)
+
+        self.play(Create(link_arrow), Write(arrow_label), run_time=0.7)
+        self.wait(1.0)
+
+        # Reaction arrows at supported nodes (node 6 and node 1)
+        r_len = 0.55
+        r_arrows = VGroup()
+        # R11 (horizontal at node 6)
+        r_arr_11 = Arrow(ep_i + LEFT * r_len, ep_i, buff=0, stroke_width=3,
+                         color=ORANGE, max_tip_length_to_length_ratio=0.20)
+        r_lbl_11 = MathTex("R_{11}").scale(0.36).set_color(ORANGE)
+        r_lbl_11.next_to(r_arr_11, LEFT, buff=0.06)
+        # R12 (vertical at node 6)
+        r_arr_12 = Arrow(ep_i + DOWN * r_len, ep_i, buff=0, stroke_width=3,
+                         color=ORANGE, max_tip_length_to_length_ratio=0.20)
+        r_lbl_12 = MathTex("R_{12}").scale(0.36).set_color(ORANGE)
+        r_lbl_12.next_to(r_arr_12, DOWN, buff=0.06)
+        # R1 (horizontal at node 1)
+        r_arr_1 = Arrow(ep_j, ep_j + RIGHT * r_len, buff=0, stroke_width=3,
+                        color=ORANGE, max_tip_length_to_length_ratio=0.20)
+        r_lbl_1 = MathTex("R_1").scale(0.36).set_color(ORANGE)
+        r_lbl_1.next_to(r_arr_1, RIGHT, buff=0.06)
+        # R2 (vertical at node 1)
+        r_arr_2 = Arrow(ep_j + DOWN * r_len, ep_j, buff=0, stroke_width=3,
+                        color=ORANGE, max_tip_length_to_length_ratio=0.20)
+        r_lbl_2 = MathTex("R_2").scale(0.36).set_color(ORANGE)
+        r_lbl_2.next_to(r_arr_2, DOWN, buff=0.06)
+
+        r_arrows = VGroup(
+            r_arr_11, r_lbl_11, r_arr_12, r_lbl_12,
+            r_arr_1, r_lbl_1, r_arr_2, r_lbl_2,
+        )
+
+        self.play(
+            LaggedStartMap(FadeIn, r_arrows, lag_ratio=0.08),
+            run_time=0.8,
+        )
+        self.wait(1.5)
+
+        # ==========================================================
+        # Reaction vector formula
+        # ==========================================================
+        reak_eq = MathTex(
+            r"\mathbf{R}",
+            r"= \begin{bmatrix}"
+            r"R_1 \\ R_2 \\ 0 \\ 0 \\ 0 \\ 0 \\"
+            r"0 \\ 0 \\ 0 \\ 0 \\ R_{11} \\ R_{12}"
+            r"\end{bmatrix}"
+        ).scale(0.44)
+
+        # DOF labels on the right
+        reak_dof = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.32).set_color(GREY_A)
+            for k in range(1, 13)
+        ])
+
+        reak_eq.move_to([4.5, -0.5, 0])
+        clamp_to_frame(reak_eq)
+
+        for i, lbl in enumerate(reak_dof):
+            eq_t = reak_eq.get_top()[1]
+            eq_b = reak_eq.get_bottom()[1]
+            y = interpolate(eq_t - 0.08, eq_b + 0.08, i / 11)
+            lbl.move_to([reak_eq.get_right()[0] + 0.35, y, 0])
+
+        self.play(Write(reak_eq), run_time=1.2)
+        self.play(
+            LaggedStartMap(FadeIn, reak_dof, lag_ratio=0.03),
+            run_time=0.5,
+        )
+
+        # Description
+        reak_note = MathTex(
+            r"\text{Non-zero only at fixed DOFs: }",
+            r"Q_1, Q_2, Q_{11}, Q_{12}"
+        ).scale(0.40)
+        reak_note[1].set_color(ORANGE)
+        reak_note.next_to(reak_eq, DOWN, buff=0.25)
+        self.play(FadeIn(reak_note), run_time=0.5)
+
+        # Box
+        reak_box = SurroundingRectangle(
+            VGroup(reak_eq, reak_dof), color=ORANGE, buff=0.10, stroke_width=2.5,
+        )
+        self.play(Create(reak_box), run_time=0.4)
+
+        self.wait(3.0)
+
 
 if __name__ == "__main__":
     import sys
