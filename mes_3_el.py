@@ -4807,6 +4807,458 @@ class MESStructureScene(Scene):
 
         self.wait(3.0)
 
+        # ============================================================
+        # NOWY KROK: Global Vectors Assembly + Main FEM Equation
+        # ============================================================
+
+        # --- 0) Clear ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # ==============================
+        # SCREEN A: Global Vectors
+        # ==============================
+        scA_title = Text(
+            "Assembly of Global Vectors", font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(scA_title), run_time=0.7)
+
+        V_SC = 0.38
+
+        # --- A1) Edge load → global coords via T3 ---
+        note_t3 = MathTex(
+            r"\mathbf{P} = \mathbf{T}_3 \cdot \mathbf{f}_3^{\text{edge}}"
+        ).scale(0.44)
+        note_t3.next_to(scA_title, DOWN, buff=0.25).shift(LEFT * 4.0)
+        self.play(FadeIn(note_t3), run_time=0.5)
+
+        p_vec = MathTex(
+            r"\mathbf{P} = \begin{bmatrix}"
+            r"0\\0\\0\\0\\0\\[2pt]-\frac{32}{3}\\[2pt]0\\[2pt]-\frac{40}{3}\\[2pt]0\\0\\0\\0"
+            r"\end{bmatrix}\text{kN}"
+        ).scale(V_SC)
+        p_vec.next_to(note_t3, DOWN, buff=0.18).align_to(note_t3, LEFT)
+
+        self.play(FadeIn(p_vec), run_time=0.7)
+        self.wait(0.8)
+
+        # --- A2) Reaction vector R ---
+        r_vec = MathTex(
+            r"\mathbf{R} = \begin{bmatrix}"
+            r"R_1\\R_2\\0\\0\\0\\0\\0\\0\\0\\0\\R_{11}\\R_{12}"
+            r"\end{bmatrix}"
+        ).scale(V_SC)
+        r_vec.next_to(note_t3, DOWN, buff=0.18).shift(RIGHT * 3.2)
+        r_vec.align_to(p_vec, UP)
+
+        self.play(FadeIn(r_vec), run_time=0.7)
+        self.wait(0.8)
+
+        # --- A3) P + R combined ---
+        plus_sign = MathTex("+").scale(0.55)
+        plus_sign.move_to((p_vec.get_right() + r_vec.get_left()) / 2)
+
+        eq_sign = MathTex("=").scale(0.55)
+        eq_sign.next_to(r_vec, RIGHT, buff=0.25)
+
+        pr_vec = MathTex(
+            r"\mathbf{P}{+}\mathbf{R} = \begin{bmatrix}"
+            r"R_1\\R_2\\0\\0\\0\\[2pt]-\frac{32}{3}\\[2pt]0\\[2pt]-\frac{40}{3}"
+            r"\\[2pt]0\\0\\R_{11}\\R_{12}"
+            r"\end{bmatrix}"
+        ).scale(V_SC)
+        pr_vec.next_to(eq_sign, RIGHT, buff=0.20)
+        pr_vec.align_to(p_vec, UP)
+
+        self.play(FadeIn(plus_sign), run_time=0.2)
+        self.play(FadeIn(eq_sign), FadeIn(pr_vec), run_time=0.7)
+        self.wait(2.0)
+
+        # ==============================
+        # SCREEN B: Main FEM Equation
+        # ==============================
+        self.play(
+            FadeOut(Group(scA_title, note_t3, p_vec, r_vec,
+                          plus_sign, eq_sign, pr_vec)),
+            run_time=0.8,
+        )
+
+        scB_title = Text(
+            "Main FEM Equation", font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(scB_title), run_time=0.7)
+
+        # Central equation
+        main_eq = MathTex(
+            r"\mathbf{K}_{glob}", r"\cdot", r"\mathbf{Q}",
+            r"=", r"\mathbf{P}", r"+", r"\mathbf{R}"
+        ).scale(0.65)
+        main_eq[0].set_color(TEAL_A)
+        main_eq[2].set_color(GREEN_A)
+        main_eq[4].set_color(YELLOW)
+        main_eq[6].set_color(ORANGE)
+        main_eq.next_to(scB_title, DOWN, buff=0.30)
+        self.play(Write(main_eq), run_time=0.8)
+        self.wait(0.8)
+
+        # --- B1) Displacement vector Q with BCs (bigger, centered) ---
+        B_SC = 0.52
+
+        q_title = MathTex(
+            r"\mathbf{Q} ="
+        ).scale(0.55).set_color(GREEN_A)
+
+        q_vec_bc = MathTex(
+            r"\begin{bmatrix}"
+            r"0\\0\\Q_3\\Q_4\\Q_5\\Q_6\\Q_7\\Q_8\\Q_9\\Q_{10}\\0\\0"
+            r"\end{bmatrix}"
+        ).scale(B_SC)
+
+        q_grp = VGroup(q_title, q_vec_bc).arrange(RIGHT, buff=0.12)
+
+        # BC notes — one per constrained DOF row
+        # Row positions inside the vector (12 rows, 0-indexed)
+        vec_t = q_vec_bc.get_top()[1]
+        vec_b = q_vec_bc.get_bottom()[1]
+        def _row_y(row_idx):
+            return interpolate(vec_t - 0.04, vec_b + 0.04, row_idx / 11)
+
+        bc_sc = 0.26
+        bc_left_x = q_vec_bc.get_right()[0] + 0.25
+
+        bc_q1 = MathTex(r"\leftarrow \text{fixed (node 1) Hor.}").scale(bc_sc).set_color(YELLOW)
+        bc_q1.move_to([0, _row_y(0), 0])
+        bc_q1.align_to([bc_left_x, 0, 0], LEFT)
+
+        bc_q2 = MathTex(r"\leftarrow \text{fixed (node 1) Vert.}").scale(bc_sc).set_color(YELLOW)
+        bc_q2.move_to([0, _row_y(1), 0])
+        bc_q2.align_to([bc_left_x, 0, 0], LEFT)
+
+        bc_q11 = MathTex(r"\leftarrow \text{fixed (node 6) Hor.}").scale(bc_sc).set_color(YELLOW)
+        bc_q11.move_to([0, _row_y(10), 0])
+        bc_q11.align_to([bc_left_x, 0, 0], LEFT)
+
+        bc_q12 = MathTex(r"\leftarrow \text{fixed (node 6) Vert.}").scale(bc_sc).set_color(YELLOW)
+        bc_q12.move_to([0, _row_y(11), 0])
+        bc_q12.align_to([bc_left_x, 0, 0], LEFT)
+
+        bc_notes = VGroup(bc_q1, bc_q2, bc_q11, bc_q12)
+        q_with_notes = VGroup(q_grp, bc_notes)
+
+        # --- B2) P+R vector ---
+        pr_title = MathTex(
+            r"\mathbf{P}{+}\mathbf{R} ="
+        ).scale(0.55)
+
+        pr_vec2 = MathTex(
+            r"\begin{bmatrix}"
+            r"R_1\\R_2\\0\\0\\0\\[2pt]-\frac{32}{3}\\[2pt]0\\[2pt]-\frac{40}{3}"
+            r"\\[2pt]0\\0\\R_{11}\\R_{12}"
+            r"\end{bmatrix}"
+        ).scale(B_SC)
+
+        pr_grp2 = VGroup(pr_title, pr_vec2).arrange(RIGHT, buff=0.12)
+
+        # --- B3) Summary note ---
+        summary = MathTex(
+            r"\text{12 equations,}",
+            r"\text{ 12 unknowns:}",
+        ).scale(0.42)
+        unknowns = MathTex(
+            r"Q_3,\,Q_4,\,\ldots,\,Q_{10},\,R_1,\,R_2,\,R_{11},\,R_{12}"
+        ).scale(0.40).set_color(YELLOW)
+        summary_grp = VGroup(summary, unknowns).arrange(DOWN, buff=0.10)
+
+        # --- Layout: arrange everything to use full screen ---
+        # Row: Q vector | P+R vector | summary — spread across screen
+        avail_top = main_eq.get_bottom()[1] - 0.40
+        avail_bot = -config.frame_height / 2 + 0.25
+        mid_y = (avail_top + avail_bot) / 2
+
+        q_with_notes.move_to([-4.0, mid_y, 0])
+        pr_grp2.move_to([1.2, mid_y, 0])
+        pr_grp2.align_to(q_vec_bc, UP)
+        summary_grp.move_to([5.0, mid_y, 0])
+
+        # DOF labels to the LEFT of Q vector (with enough spacing)
+        dof_lbls_q = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.30).set_color(GREY_A)
+            for k in range(1, 13)
+        ])
+        qt = q_vec_bc.get_top()[1]
+        qb = q_vec_bc.get_bottom()[1]
+        for i, lbl in enumerate(dof_lbls_q):
+            y = interpolate(qt - 0.04, qb + 0.04, i / 11)
+            lbl.move_to([q_title.get_left()[0] - 0.40, y, 0])
+
+        self.play(FadeIn(q_grp), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, bc_notes, lag_ratio=0.08), run_time=0.5)
+        self.play(LaggedStartMap(FadeIn, dof_lbls_q, lag_ratio=0.02), run_time=0.4)
+        self.wait(0.5)
+
+        self.play(FadeIn(pr_grp2), run_time=0.6)
+        self.wait(0.5)
+
+        self.play(FadeIn(summary_grp), run_time=0.6)
+
+        eq_box = SurroundingRectangle(main_eq, color=TEAL_A, buff=0.12, stroke_width=2.5)
+        self.play(Create(eq_box), run_time=0.4)
+
+        self.wait(3.0)
+
+        # ==============================
+        # SCREEN C: Expanded K·Q = P+R
+        # ==============================
+        self.play(
+            FadeOut(Group(scB_title, main_eq, eq_box,
+                          q_grp, bc_notes,
+                          pr_grp2, dof_lbls_q, summary_grp)),
+            run_time=0.8,
+        )
+
+        scC_title = Text(
+            "Expanded: K · Q = P + R", font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(scC_title), run_time=0.7)
+
+        # LHS: K·Q  (÷10⁶, rounded to 2dp) — use full screen
+        lhs_title = MathTex(
+            r"\mathbf{K}_{glob} \!\cdot\! \mathbf{Q} \;=\; 10^6 \!\cdot"
+        ).scale(0.55).set_color(TEAL_A)
+
+        lhs_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"2.28\,Q_3 + 0.08\,Q_4 - 3.67\,Q_9 + 2.16\,Q_{10} \\"
+            r"-0.08\,Q_3 - 1.81\,Q_4 + 2.16\,Q_9 - 2.47\,Q_{10} \\"
+            r"17.92\,Q_3 - 2.16\,Q_4 - 2.09\,Q_6 - 4.17\,Q_7 + 4.33\,Q_8 - 12.36\,Q_9 + 2.16\,Q_{10} \\"
+            r"-2.16\,Q_3 + 19.85\,Q_4 - 2.24\,Q_5 + 4.33\,Q_7 - 12.83\,Q_8 + 2.16\,Q_9 - 2.75\,Q_{10} \\"
+            r"-2.24\,Q_4 + 6.41\,Q_5 - 6.41\,Q_7 + 2.24\,Q_8 \\"
+            r"-2.09\,Q_3 + 2.09\,Q_6 + 2.09\,Q_7 - 2.09\,Q_8 \\"
+            r"-4.17\,Q_3 + 4.33\,Q_4 - 6.41\,Q_5 + 2.09\,Q_6 + 10.58\,Q_7 - 4.33\,Q_8 - 2.09\,Q_{10} \\"
+            r"4.33\,Q_3 - 12.83\,Q_4 + 2.24\,Q_5 - 2.09\,Q_6 - 4.33\,Q_7 + 14.91\,Q_8 - 2.24\,Q_9 \\"
+            r"-12.36\,Q_3 + 2.16\,Q_4 - 2.24\,Q_8 + 13.75\,Q_9 - 2.16\,Q_{10} \\"
+            r"2.16\,Q_3 - 2.75\,Q_4 - 2.09\,Q_7 - 2.16\,Q_9 + 7.02\,Q_{10} \\"
+            r"-3.67\,Q_3 - 2.16\,Q_4 + 2.28\,Q_9 - 0.08\,Q_{10} \\"
+            r"-2.16\,Q_3 - 2.47\,Q_4 + 0.08\,Q_9 - 1.81\,Q_{10}"
+            r"\end{bmatrix}"
+        ).scale(0.36)
+
+        # RHS: = P+R
+        rhs_eq = MathTex(r"=").scale(0.60)
+        rhs_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"R_1 \\ R_2 \\ 0 \\ 0 \\ 0 \\"
+            r"-\frac{32}{3} \\"
+            r"0 \\"
+            r"-\frac{40}{3} \\"
+            r"0 \\ 0 \\ R_{11} \\ R_{12}"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+
+        # Layout: title on top-left, then mat = rhs centered
+        lhs_title.next_to(scC_title, DOWN, buff=0.30).to_edge(LEFT, buff=0.40)
+        lhs_mat.next_to(lhs_title, RIGHT, buff=0.15)
+        rhs_eq.next_to(lhs_mat, RIGHT, buff=0.20)
+        rhs_mat.next_to(rhs_eq, RIGHT, buff=0.15)
+
+        # Scale the whole row to fit the screen width
+        full_eq_row = VGroup(lhs_title, lhs_mat, rhs_eq, rhs_mat)
+        max_w = config.frame_width - 1.2
+        if full_eq_row.width > max_w:
+            full_eq_row.scale(max_w / full_eq_row.width)
+
+        # Center vertically in the available space (below title, above bottom)
+        avail_top = scC_title.get_bottom()[1] - 0.25
+        avail_bot = -config.frame_height / 2 + 0.50
+        target_y = (avail_top + avail_bot) / 2
+        full_eq_row.move_to([0, target_y, 0])
+
+        # DOF row labels on the far right
+        kq_dof = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.30).set_color(GREY_A)
+            for k in range(1, 13)
+        ])
+        rhs_t = rhs_mat.get_top()[1]
+        rhs_b = rhs_mat.get_bottom()[1]
+        for i, lbl in enumerate(kq_dof):
+            y = interpolate(rhs_t - 0.05, rhs_b + 0.05, i / 11)
+            lbl.move_to([rhs_mat.get_right()[0] + 0.40, y, 0])
+
+        self.play(FadeIn(full_eq_row), run_time=1.2)
+        self.wait(0.5)
+        self.play(LaggedStartMap(FadeIn, kq_dof, lag_ratio=0.02), run_time=0.5)
+        self.wait(0.5)
+
+        # Note at the very bottom
+        sys_note = MathTex(
+            r"\text{System of 12 linear equations with 12 unknowns}"
+        ).scale(0.42).set_color(YELLOW)
+        sys_note.to_edge(DOWN, buff=0.25)
+        self.play(FadeIn(sys_note), run_time=0.5)
+
+        self.wait(3.0)
+
+        # ============================================================
+        # NOWY KROK: Solution of K·Q = P+R
+        # ============================================================
+
+        # --- 0) Clear ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # --- 1) Title ---
+        sol_title = Text(
+            "Solution of  K · Q = P + R", font_size=36,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(sol_title), run_time=0.8)
+        self.wait(0.3)
+
+        # --- 2) Solving note ---
+        solve_note = MathTex(
+            r"\text{Solving the system of 12 linear equations yields:}"
+        ).scale(0.44)
+        solve_note.next_to(sol_title, DOWN, buff=0.28)
+        self.play(FadeIn(solve_note), run_time=0.5)
+        self.wait(0.5)
+
+        # --- 3) Results: Q vector and R vector side by side ---
+        SOL_SC = 0.46
+
+        # Global displacement vector
+        q_sol_title = MathTex(
+            r"\mathbf{Q} ="
+        ).scale(0.50).set_color(GREEN_A)
+
+        q_sol_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"0 \\"
+            r"0 \\"
+            r"1.423 \times 10^{-5} \\"
+            r"-1.223 \times 10^{-5} \\"
+            r"3.847 \times 10^{-5} \\"
+            r"-4.299 \times 10^{-5} \\"
+            r"3.771 \times 10^{-5} \\"
+            r"-1.439 \times 10^{-5} \\"
+            r"1.333 \times 10^{-5} \\"
+            r"6.145 \times 10^{-6} \\"
+            r"0 \\"
+            r"0"
+            r"\end{bmatrix}"
+            r"\;\text{m}"
+        ).scale(SOL_SC)
+
+        q_sol_grp = VGroup(q_sol_title, q_sol_mat).arrange(RIGHT, buff=0.12)
+
+        # Global reaction vector
+        r_sol_title = MathTex(
+            r"\mathbf{R} ="
+        ).scale(0.50).set_color(ORANGE)
+
+        r_sol_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"-4.163 \\"
+            r"34.667 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"0 \\"
+            r"4.163 \\"
+            r"-10.667"
+            r"\end{bmatrix}"
+            r"\;\text{kN}"
+        ).scale(SOL_SC)
+
+        r_sol_grp = VGroup(r_sol_title, r_sol_mat).arrange(RIGHT, buff=0.12)
+
+        # DOF labels
+        q_dof_lbls = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.28).set_color(GREY_A)
+            for k in range(1, 13)
+        ])
+        r_dof_lbls = VGroup(*[
+            MathTex(f"Q_{{{k}}}").scale(0.28).set_color(GREY_A)
+            for k in range(1, 13)
+        ])
+
+        # Layout — center both vectors vertically
+        avail_top = solve_note.get_bottom()[1] - 0.30
+        avail_bot = -config.frame_height / 2 + 0.25
+        mid_y = (avail_top + avail_bot) / 2
+
+        q_sol_grp.move_to([-3.5, mid_y, 0])
+        r_sol_grp.move_to([3.0, mid_y, 0])
+        r_sol_grp.align_to(q_sol_grp, UP)
+
+        # Position DOF labels
+        for dof_set, vec_mat, title_mob in [
+            (q_dof_lbls, q_sol_mat, q_sol_title),
+            (r_dof_lbls, r_sol_mat, r_sol_title),
+        ]:
+            vt = vec_mat.get_top()[1]
+            vb = vec_mat.get_bottom()[1]
+            lx = title_mob.get_left()[0] - 0.38
+            for i, lbl in enumerate(dof_set):
+                y = interpolate(vt - 0.04, vb + 0.04, i / 11)
+                lbl.move_to([lx, y, 0])
+
+        # Animate Q
+        self.play(FadeIn(q_sol_grp), run_time=0.8)
+        self.play(
+            LaggedStartMap(FadeIn, q_dof_lbls, lag_ratio=0.02),
+            run_time=0.4,
+        )
+        self.wait(0.5)
+
+        # BC highlights on Q (rows 0,1,10,11 = zero)
+        q_bc_note = MathTex(
+            r"\text{Boundary conditions: } Q_1{=}Q_2{=}Q_{11}{=}Q_{12}{=}0"
+        ).scale(0.36).set_color(YELLOW)
+        q_bc_note.next_to(q_sol_grp, DOWN, buff=0.18)
+        self.play(FadeIn(q_bc_note), run_time=0.4)
+
+        # Animate R
+        self.play(FadeIn(r_sol_grp), run_time=0.8)
+        self.play(
+            LaggedStartMap(FadeIn, r_dof_lbls, lag_ratio=0.02),
+            run_time=0.4,
+        )
+        self.wait(0.5)
+
+        # Reaction note
+        r_note = MathTex(
+            r"\sum R_y = 34.667 - 10.667 = 24.0 \;\text{kN}"
+        ).scale(0.38).set_color(ORANGE)
+        r_note2 = MathTex(
+            r"\sum R_x = -4.163 + 4.163 = 0 \;\text{kN} \;\checkmark"
+        ).scale(0.38).set_color(ORANGE)
+        r_notes = VGroup(r_note, r_note2).arrange(DOWN, buff=0.08)
+        r_notes.next_to(r_sol_grp, DOWN, buff=0.18)
+
+        self.play(FadeIn(r_notes), run_time=0.6)
+
+        # Boxes
+        q_box = SurroundingRectangle(
+            q_sol_grp, color=GREEN_A, buff=0.10, stroke_width=2.5,
+        )
+        r_box = SurroundingRectangle(
+            r_sol_grp, color=ORANGE, buff=0.10, stroke_width=2.5,
+        )
+        self.play(Create(q_box), Create(r_box), run_time=0.5)
+
+        self.wait(3.0)
+
 
 if __name__ == "__main__":
     import sys
