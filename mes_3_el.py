@@ -5259,6 +5259,326 @@ class MESStructureScene(Scene):
 
         self.wait(3.0)
 
+        # ============================================================
+        # NOWY KROK: Back-substitution to Element I — Strains & Stresses
+        # ============================================================
+
+        # --- 0) Clear ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # ================================================================
+        # SCREEN D1: Title + local displacement vector
+        # ================================================================
+        d1_title = Text(
+            "Back-substitution to Element I (rectangle)",
+            font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(d1_title), run_time=0.8)
+
+        # Mapping note
+        map_note = MathTex(
+            r"\text{Extract local DOFs from global } \mathbf{Q}"
+            r"\text{ using topology:}"
+        ).scale(0.40)
+        map_note.next_to(d1_title, DOWN, buff=0.22)
+        self.play(FadeIn(map_note), run_time=0.5)
+
+        # DOF mapping
+        dof_map = MathTex(
+            r"i{=}6 \;\rightarrow\; Q_{11},Q_{12} \qquad "
+            r"j{=}1 \;\rightarrow\; Q_1,Q_2 \qquad "
+            r"k{=}2 \;\rightarrow\; Q_3,Q_4 \qquad "
+            r"r{=}5 \;\rightarrow\; Q_9,Q_{10}"
+        ).scale(0.34).set_color(GREY_A)
+        dof_map.next_to(map_note, DOWN, buff=0.12)
+        self.play(FadeIn(dof_map), run_time=0.5)
+        self.wait(0.5)
+
+        # Local displacement vector
+        qlok_title = MathTex(
+            r"\mathbf{Q}_{\text{lok}}^{(1)} ="
+        ).scale(0.50).set_color(GREEN_A)
+        qlok_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"0 \\ 0 \\ 0 \\ 0 \\"
+            r"1.423 \times 10^{-5} \\ -1.223 \times 10^{-5} \\"
+            r"1.333 \times 10^{-5} \\ 6.145 \times 10^{-6}"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+
+        qlok_dof = VGroup(*[
+            MathTex(s).scale(0.26).set_color(GREY_A)
+            for s in [r"Q_{11}", r"Q_{12}", r"Q_1", r"Q_2",
+                      r"Q_3", r"Q_4", r"Q_9", r"Q_{10}"]
+        ])
+
+        qlok_grp = VGroup(qlok_title, qlok_mat).arrange(RIGHT, buff=0.12)
+        qlok_grp.next_to(dof_map, DOWN, buff=0.30)
+
+        qt = qlok_mat.get_top()[1]
+        qb = qlok_mat.get_bottom()[1]
+        for i, lbl in enumerate(qlok_dof):
+            y = interpolate(qt - 0.04, qb + 0.04, i / 7)
+            lbl.move_to([qlok_title.get_left()[0] - 0.40, y, 0])
+
+        self.play(FadeIn(qlok_grp), run_time=0.7)
+        self.play(LaggedStartMap(FadeIn, qlok_dof, lag_ratio=0.03), run_time=0.4)
+
+        qlok_box = SurroundingRectangle(qlok_grp, color=GREEN_A, buff=0.08, stroke_width=2)
+        self.play(Create(qlok_box), run_time=0.3)
+        self.wait(2.0)
+
+        # ================================================================
+        # SCREEN D2: B matrix
+        # ================================================================
+        self.play(
+            FadeOut(Group(d1_title, map_note, dof_map,
+                          qlok_grp, qlok_dof, qlok_box)),
+            run_time=0.7,
+        )
+
+        d2_title = Text(
+            "Strain-Displacement Matrix B (Element I)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(d2_title), run_time=0.7)
+
+        b_note = MathTex(
+            r"\boldsymbol{\varepsilon} = \mathbf{B} \cdot \mathbf{Q}_{\text{lok}}"
+            r"\qquad\text{— B maps nodal displacements to strains}"
+        ).scale(0.40)
+        b_note.next_to(d2_title, DOWN, buff=0.20)
+        self.play(FadeIn(b_note), run_time=0.5)
+
+        # Full B matrix (3×8)
+        b_mat = MathTex(
+            r"\mathbf{B} = \begin{bmatrix}"
+            r"\tfrac{y}{6}{-}\tfrac{1}{4} & 0 &"
+            r"-\tfrac{y}{6}{+}\tfrac{1}{4} & 0 &"
+            r"\tfrac{y}{6}{+}\tfrac{1}{4} & 0 &"
+            r"-\tfrac{y}{6}{-}\tfrac{1}{4} & 0 \\[4pt]"
+            r"0 & \tfrac{x}{6}{-}\tfrac{1}{6} &"
+            r"0 & -\tfrac{x}{6}{-}\tfrac{1}{6} &"
+            r"0 & \tfrac{x}{6}{+}\tfrac{1}{6} &"
+            r"0 & -\tfrac{x}{6}{+}\tfrac{1}{6} \\[4pt]"
+            r"\tfrac{x}{6}{-}\tfrac{1}{6} & \tfrac{y}{6}{-}\tfrac{1}{4} &"
+            r"-\tfrac{x}{6}{-}\tfrac{1}{6} & -\tfrac{y}{6}{+}\tfrac{1}{4} &"
+            r"\tfrac{x}{6}{+}\tfrac{1}{6} & \tfrac{y}{6}{+}\tfrac{1}{4} &"
+            r"-\tfrac{x}{6}{+}\tfrac{1}{6} & -\tfrac{y}{6}{-}\tfrac{1}{4}"
+            r"\end{bmatrix}"
+        ).scale(0.30)
+        b_mat.next_to(b_note, DOWN, buff=0.25)
+
+        b_dep = MathTex(
+            r"\text{Note: } \mathbf{B} = \mathbf{B}(x,\,y)"
+            r"\text{ — depends on position in the element}"
+        ).scale(0.36).set_color(YELLOW)
+        b_dep.next_to(b_mat, DOWN, buff=0.20)
+
+        self.play(FadeIn(b_mat), run_time=0.8)
+        self.play(FadeIn(b_dep), run_time=0.4)
+        self.wait(2.5)
+
+        # ================================================================
+        # SCREEN D3: Symbolic strain, then evaluate at center
+        # ================================================================
+        self.play(FadeOut(Group(d2_title, b_note, b_mat, b_dep)), run_time=0.7)
+
+        d3_title = Text(
+            "Strain at the Center of Element I",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(d3_title), run_time=0.7)
+
+        # Symbolic result
+        sym_label = MathTex(
+            r"\boldsymbol{\varepsilon}(x,y)"
+            r"= \mathbf{B}(x,y) \cdot \mathbf{Q}_{\text{lok}}^{(1)} ="
+        ).scale(0.44)
+        sym_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"1.489 \times 10^{-7}\, y \;+\; 2.233 \times 10^{-7} \\"
+            r"-3.062 \times 10^{-6}\, x \;-\; 1.014 \times 10^{-6} \\"
+            r"1.489 \times 10^{-7}\, x \;-\; 3.062 \times 10^{-6}\, y"
+            r"\end{bmatrix}"
+        ).scale(0.40)
+        sym_grp = VGroup(sym_label, sym_vec).arrange(RIGHT, buff=0.10)
+        sym_grp.next_to(d3_title, DOWN, buff=0.30)
+
+        self.play(FadeIn(sym_grp), run_time=0.8)
+        self.wait(1.5)
+
+        # Center evaluation note
+        center_note = MathTex(
+            r"\text{Center of rectangle: } x = 0,\; y = 0"
+        ).scale(0.42).set_color(YELLOW)
+        center_note.next_to(sym_grp, DOWN, buff=0.25)
+        self.play(Write(center_note), run_time=0.5)
+        self.wait(0.5)
+
+        # B at center
+        b_center_label = MathTex(
+            r"\mathbf{B}(0,0) ="
+        ).scale(0.40)
+        b_center_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"-\tfrac{1}{4} & 0 & \tfrac{1}{4} & 0"
+            r"& \tfrac{1}{4} & 0 & -\tfrac{1}{4} & 0 \\[3pt]"
+            r"0 & -\tfrac{1}{6} & 0 & -\tfrac{1}{6}"
+            r"& 0 & \tfrac{1}{6} & 0 & \tfrac{1}{6} \\[3pt]"
+            r"-\tfrac{1}{6} & -\tfrac{1}{4} & -\tfrac{1}{6} & \tfrac{1}{4}"
+            r"& \tfrac{1}{6} & \tfrac{1}{4} & \tfrac{1}{6} & -\tfrac{1}{4}"
+            r"\end{bmatrix}"
+        ).scale(0.30)
+        b_center_grp = VGroup(b_center_label, b_center_mat).arrange(RIGHT, buff=0.10)
+        b_center_grp.next_to(center_note, DOWN, buff=0.20)
+
+        self.play(FadeIn(b_center_grp), run_time=0.6)
+        self.wait(1.0)
+
+        # Final strain vector at center
+        eps_label = MathTex(
+            r"\boldsymbol{\varepsilon}(0,0) ="
+        ).scale(0.48)
+        eps_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"2.233 \times 10^{-7} \\"
+            r"-1.014 \times 10^{-6} \\"
+            r"1.819 \times 10^{-12}"
+            r"\end{bmatrix}"
+        ).scale(0.48)
+        eps_names = VGroup(*[
+            MathTex(s).scale(0.30).set_color(TEAL_A)
+            for s in [r"\varepsilon_x", r"\varepsilon_y", r"\gamma_{xy}"]
+        ])
+
+        eps_grp = VGroup(eps_label, eps_vec).arrange(RIGHT, buff=0.10)
+        eps_grp.next_to(b_center_grp, DOWN, buff=0.25)
+
+        et = eps_vec.get_top()[1]
+        eb = eps_vec.get_bottom()[1]
+        for i, lbl in enumerate(eps_names):
+            y = interpolate(et - 0.04, eb + 0.04, i / 2)
+            lbl.move_to([eps_vec.get_right()[0] + 0.45, y, 0])
+
+        eps_box = SurroundingRectangle(
+            VGroup(eps_grp, eps_names), color=TEAL_A, buff=0.10, stroke_width=2.5,
+        )
+
+        self.play(FadeIn(eps_grp), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, eps_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(eps_box), run_time=0.3)
+        self.wait(2.5)
+
+        # ================================================================
+        # SCREEN D4: D matrix → stress σ = D·ε
+        # ================================================================
+        self.play(
+            FadeOut(Group(d3_title, sym_grp, center_note,
+                          b_center_grp, eps_grp, eps_names, eps_box)),
+            run_time=0.7,
+        )
+
+        d4_title = Text(
+            "Stress Tensor — Element I (center)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(d4_title), run_time=0.7)
+
+        # Formula
+        sigma_formula = MathTex(
+            r"\boldsymbol{\sigma}",
+            r"= \mathbf{D} \cdot \boldsymbol{\varepsilon}"
+        ).scale(0.55)
+        sigma_formula[0].set_color(ORANGE)
+        sigma_formula.next_to(d4_title, DOWN, buff=0.22)
+        self.play(Write(sigma_formula), run_time=0.5)
+
+        d_note = MathTex(
+            r"\mathbf{D} \text{ — constitutive (elasticity) matrix}"
+        ).scale(0.36).set_color(GREY_A)
+        d_note.next_to(sigma_formula, DOWN, buff=0.12)
+        self.play(FadeIn(d_note), run_time=0.3)
+
+        # D matrix
+        d_label = MathTex(r"\mathbf{D} =").scale(0.48)
+        d_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"85.5 & 29.9 & 0 \\"
+            r"29.9 & 85.5 & 0 \\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+            r"\;\text{GPa}"
+        ).scale(0.48)
+        d_grp = VGroup(d_label, d_mat).arrange(RIGHT, buff=0.12)
+
+        # ε vector (recall)
+        eps2_label = MathTex(r"\boldsymbol{\varepsilon} =").scale(0.48)
+        eps2_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"2.233 \times 10^{-7} \\"
+            r"-1.014 \times 10^{-6} \\"
+            r"1.819 \times 10^{-12}"
+            r"\end{bmatrix}"
+        ).scale(0.44)
+        eps2_grp = VGroup(eps2_label, eps2_vec).arrange(RIGHT, buff=0.10)
+
+        # Position D and ε side by side
+        de_row = VGroup(d_grp, eps2_grp).arrange(RIGHT, buff=0.80)
+        de_row.next_to(d_note, DOWN, buff=0.28)
+
+        self.play(FadeIn(d_grp), run_time=0.6)
+        self.play(FadeIn(eps2_grp), run_time=0.5)
+        self.wait(1.0)
+
+        # Result: σ
+        sigma_label = MathTex(
+            r"\boldsymbol{\sigma} = \mathbf{D} \cdot \boldsymbol{\varepsilon} ="
+        ).scale(0.50).set_color(ORANGE)
+        sigma_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"-0.01122 \\"
+            r"-0.08000 \\"
+            r"5.057 \times 10^{-8}"
+            r"\end{bmatrix}"
+            r"\;\text{MPa}"
+        ).scale(0.50)
+        sigma_names = VGroup(*[
+            MathTex(s).scale(0.32).set_color(ORANGE)
+            for s in [r"\sigma_x", r"\sigma_y", r"\tau_{xy}"]
+        ])
+
+        sigma_grp = VGroup(sigma_label, sigma_vec).arrange(RIGHT, buff=0.12)
+        sigma_grp.next_to(de_row, DOWN, buff=0.30)
+
+        st = sigma_vec.get_top()[1]
+        sb = sigma_vec.get_bottom()[1]
+        for i, lbl in enumerate(sigma_names):
+            y = interpolate(st - 0.04, sb + 0.04, i / 2)
+            lbl.move_to([sigma_vec.get_right()[0] + 0.45, y, 0])
+
+        sigma_box = SurroundingRectangle(
+            VGroup(sigma_grp, sigma_names), color=ORANGE, buff=0.12, stroke_width=2.5,
+        )
+
+        self.play(Write(sigma_grp), run_time=0.8)
+        self.play(LaggedStartMap(FadeIn, sigma_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(sigma_box), run_time=0.4)
+
+        # Unit note
+        unit_note = MathTex(
+            r"\text{Result in MPa (consistent units: kN, m, GPa)}"
+        ).scale(0.36).set_color(YELLOW)
+        unit_note.next_to(sigma_box, DOWN, buff=0.18)
+        self.play(FadeIn(unit_note), run_time=0.4)
+
+        self.wait(3.0)
+
 
 if __name__ == "__main__":
     import sys
