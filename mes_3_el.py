@@ -6154,6 +6154,239 @@ class MESStructureScene(Scene):
         self.wait(3.0)
 
 
+class ResultsSummaryScene(Scene):
+    """Crowning summary graphic.
+
+    Shows the three element stress components (Sigma XX, Sigma YY, shear XY)
+    laid out side by side on the structure, together with a comparison against
+    a commercial FEM solution (constant CST stress per element).
+
+    Render with:
+        manim -pqh mes_3_el.py ResultsSummaryScene
+    """
+
+    def construct(self):
+        # ---- Geometry (same node numbering as the main derivation) ----
+        node_m = {
+            1: (2, 0), 2: (2, 3), 3: (4, 5),
+            4: (2, 5), 5: (0, 3), 6: (0, 0),
+        }
+        # element -> ordered node ids (CCW)
+        elements = {
+            "I":   [6, 1, 2, 5],
+            "II":  [4, 5, 2],
+            "III": [2, 3, 4],
+        }
+        centroid_m = {
+            "I":   (1.0, 1.5),
+            "II":  (4.0 / 3.0, 11.0 / 3.0),
+            "III": (8.0 / 3.0, 13.0 / 3.0),
+        }
+        struct_center_m = np.array([
+            np.mean([p[0] for p in node_m.values()]),
+            np.mean([p[1] for p in node_m.values()]),
+        ])
+
+        M2U = 0.55  # metres -> scene units inside a single panel
+
+        def pmap(center, x, y):
+            return (
+                center
+                + M2U * RIGHT * (x - struct_center_m[0])
+                + M2U * UP * (y - struct_center_m[1])
+            )
+
+        ELEM_FILL = {"I": BLUE_E, "II": GREEN_E, "III": GOLD_E}
+
+        # ---- Per-panel data (component shown on the structure) ----
+        # element-centre constant stress per element (matches the comparison boxes)
+        panels = [
+            {
+                "title": "Sigma XX",
+                "elem": {"I": "-0.0112", "II": "0.0059", "III": "-0.0000"},
+            },
+            {
+                "title": "Sigma YY",
+                "elem": {"I": "-0.0800", "II": "-0.0790", "III": "-0.0810"},
+            },
+            {
+                "title": "Shear XY",
+                "elem": {"I": "-0.0000", "II": "0.0711", "III": "0.0711"},
+            },
+        ]
+
+        def build_load(center):
+            s = pmap(center, 2, 5)
+            e = pmap(center, 4, 5)
+            line = Line(s, e)
+            grp = VGroup()
+            n = 5
+            for i in range(n):
+                t = i / (n - 1)
+                base = line.point_from_proportion(t)
+                length = interpolate(0.55, 0.30, t)
+                grp.add(Arrow(
+                    base + UP * length, base, buff=0,
+                    stroke_width=2.0, color=RED,
+                    max_tip_length_to_length_ratio=0.32,
+                    max_stroke_width_to_length_ratio=8,
+                ))
+            top_line = Line(grp[0].get_start(), grp[-1].get_start(),
+                            color=RED, stroke_width=2.0)
+            grp.add(top_line)
+            pz = MathTex(r"p_Z=-16.00;\,-8.00").scale(0.30).set_color(RED)
+            pz.next_to(grp, UP, buff=0.08)
+            grp.add(pz)
+            return grp
+
+        def build_fixed_support(center):
+            # Continuous fixed (clamped) support along the bottom edge:
+            # solid base line + diagonal hatching ("broom"), spanning a little
+            # beyond both bottom nodes.
+            a = pmap(center, 0, 0)
+            b = pmap(center, 2, 0)
+            ext = (b - a)
+            ext = ext / np.linalg.norm(ext)
+            a2 = a - ext * 0.12
+            b2 = b + ext * 0.12
+            grp = VGroup(Line(a2, b2, color=GREY_A, stroke_width=4.0))
+            edge = Line(a2, b2)
+            n = 9
+            hatch = 0.24
+            for i in range(n + 1):
+                p = edge.point_from_proportion(i / n)
+                grp.add(Line(
+                    p, p + DOWN * hatch + LEFT * hatch * 0.7,
+                    color=GREY_A, stroke_width=2.0,
+                ))
+            return grp
+
+        def build_panel(center, data):
+            g = VGroup()
+
+            # filled element regions
+            for name, nodes in elements.items():
+                pts = [pmap(center, *node_m[n]) for n in nodes]
+                g.add(Polygon(
+                    *pts, color=BLUE_D, stroke_width=1.5,
+                    fill_color=ELEM_FILL[name], fill_opacity=0.18,
+                ))
+
+            # emphasised outer outline
+            outer_ids = [6, 1, 2, 3, 4, 5]
+            g.add(Polygon(
+                *[pmap(center, *node_m[n]) for n in outer_ids],
+                color=WHITE, stroke_width=3.0,
+            ))
+
+            # node numbers (small, offset outward)
+            sc = pmap(center, *struct_center_m)
+            for nid, (x, y) in node_m.items():
+                p = pmap(center, x, y)
+                direction = p - sc
+                norm = np.linalg.norm(direction)
+                unit = direction / norm if norm > 1e-6 else RIGHT
+                g.add(MathTex(str(nid)).scale(0.32)
+                      .set_color(GREY_A)
+                      .move_to(p + unit * 0.26))
+
+            # element-centre stress values + element tags
+            for name in elements:
+                cm = centroid_m[name]
+                base = pmap(center, *cm)
+                val = MathTex(data["elem"][name]).scale(0.40)
+                tag = MathTex(r"\text{e.\,}" + name).scale(0.26).set_color(BLUE_B)
+                vg = VGroup(val, tag).arrange(DOWN, buff=0.05).move_to(base)
+                g.add(vg)
+
+            # load + continuous fixed (clamped) support along the bottom edge
+            g.add(build_load(center))
+            support = build_fixed_support(center)
+            g.add(support)
+
+            # support reactions (placed below the clamped edge)
+            rl = MathTex(r"\begin{matrix} F_X{=}4.17 \\ F_Z{=}-10.67 \end{matrix}")\
+                .scale(0.30).set_color(GREY_A)
+            rl.next_to(support, DOWN, buff=0.12).align_to(support, LEFT).shift(LEFT * 0.10)
+            rr = MathTex(r"\begin{matrix} F_X{=}-4.17 \\ F_Z{=}34.67 \end{matrix}")\
+                .scale(0.30).set_color(GREY_A)
+            rr.next_to(support, DOWN, buff=0.12).align_to(support, RIGHT).shift(RIGHT * 0.10)
+            g.add(rl, rr)
+
+            return g
+
+        def title_box(text_str, color):
+            t = Text(text_str, font_size=26, weight=BOLD)
+            box = RoundedRectangle(
+                corner_radius=0.10,
+                width=t.width + 0.45, height=t.height + 0.30,
+                color=color, fill_color=BLUE_E, fill_opacity=0.35,
+                stroke_width=2.0,
+            ).move_to(t)
+            return VGroup(box, t)
+
+        # ---- Header (small, subtle) ----
+        header = Text(
+            "Agreement with commercial solution?   YES",
+            font_size=20,
+            t2c={"YES": GREEN_B},
+        )
+        header_box = RoundedRectangle(
+            corner_radius=0.08,
+            width=header.width + 0.30, height=header.height + 0.18,
+            color=GREY_B, fill_opacity=0.0,
+            stroke_width=1.2,
+        ).move_to(header)
+        header_grp = VGroup(header_box, header).to_edge(UP, buff=0.14)
+
+        self.play(FadeIn(header_grp), run_time=0.6)
+
+        # ---- Element comparison value boxes (top) ----
+        vec_tex = {
+            "I":   r"\begin{bmatrix}-0.01122\\-0.08000\\5.057\times10^{-8}\end{bmatrix}",
+            "II":  r"\begin{bmatrix}0.005901\\-0.07897\\0.07111\end{bmatrix}",
+            "III": r"\begin{bmatrix}-1.688\times10^{-6}\\-0.08103\\-0.07111\end{bmatrix}",
+        }
+        value_boxes = VGroup()
+        for name in ["I", "II", "III"]:
+            tag = MathTex(r"\text{e.\,}" + name).scale(0.38).set_color(BLUE_B)
+            mat = MathTex(vec_tex[name]).scale(0.36)
+            inner = VGroup(tag, mat).arrange(DOWN, buff=0.05)
+            box = SurroundingRectangle(inner, color=BLUE_B, buff=0.09, stroke_width=1.5)
+            value_boxes.add(VGroup(box, inner))
+        value_boxes.arrange(RIGHT, buff=0.40)
+
+        comp_legend = VGroup(*[
+            MathTex(s).scale(0.30).set_color(GREY_A)
+            for s in [r"\sigma_{XX}", r"\sigma_{YY}", r"\tau_{XY}"]
+        ]).arrange(DOWN, buff=0.18)
+        comp_legend.next_to(value_boxes, RIGHT, buff=0.20)
+
+        value_row = VGroup(value_boxes, comp_legend)
+        value_row.next_to(header_grp, DOWN, buff=0.18)
+
+        self.play(LaggedStartMap(FadeIn, value_boxes, lag_ratio=0.15), run_time=0.9)
+        self.play(FadeIn(comp_legend), run_time=0.4)
+
+        # ---- Three panels ----
+        panel_centers = [LEFT * 4.85, ORIGIN, RIGHT * 4.85]
+        panel_centers = [c + DOWN * 1.55 for c in panel_centers]
+
+        title_colors = [BLUE_B, BLUE_B, BLUE_B]
+        for c, data, tcol in zip(panel_centers, panels, title_colors):
+            tbox = title_box(data["title"], tcol)
+            tbox.move_to([c[0], 1.35, 0])
+            panel = build_panel(c, data)
+            self.play(FadeIn(tbox, shift=DOWN * 0.15), run_time=0.4)
+            self.play(
+                LaggedStartMap(FadeIn, panel, lag_ratio=0.04),
+                run_time=1.4,
+            )
+            self.wait(0.2)
+
+        self.wait(4.0)
+
+
 if __name__ == "__main__":
     import sys
     
@@ -6164,4 +6397,11 @@ if __name__ == "__main__":
 
     # in the terminal, run:
     # manim -pql mes_3_el.py MESStructureScene --from_animation_number 90
+
+    # (my_venv1) PS C:\python\git_projects\youtube_manim> manim -qh mes_3_el.py MESStructureScene --from_animation_number 501 -o MESStructureScene_part2.mp4
+
+    # (my_venv1) PS C:\python\git_projects\youtube_manim> manim -qh mes_3_el.py MESStructureScene --from_animation_number 579 -o MESStructureScene_part2.mp4
+
+    # Crowning summary graphic (Sigma XX / YY / shear XY + commercial comparison):
+    # (my_venv1) PS C:\python\git_projects\youtube_manim> manim -pqh mes_3_el.py ResultsSummaryScene
  
