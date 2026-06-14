@@ -5579,6 +5579,580 @@ class MESStructureScene(Scene):
 
         self.wait(3.0)
 
+        # ============================================================
+        # ELEMENT II — Back-substitution (triangle, CST)
+        # ============================================================
+
+        # --- E2-0) Clear ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # ================================================================
+        # E2 SCREEN 1: Title + local displacement vector
+        # ================================================================
+        e2d1_title = Text(
+            "Back-substitution to Element II (triangle)",
+            font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e2d1_title), run_time=0.8)
+
+        e2_map_note = MathTex(
+            r"\text{Extract local DOFs from global } \mathbf{Q}"
+            r"\text{ using topology:}"
+        ).scale(0.40)
+        e2_map_note.next_to(e2d1_title, DOWN, buff=0.22)
+        self.play(FadeIn(e2_map_note), run_time=0.5)
+
+        e2_dof_map = MathTex(
+            r"i{=}4 \;\rightarrow\; Q_7,Q_8 \qquad "
+            r"j{=}5 \;\rightarrow\; Q_9,Q_{10} \qquad "
+            r"k{=}2 \;\rightarrow\; Q_3,Q_4"
+        ).scale(0.34).set_color(GREY_A)
+        e2_dof_map.next_to(e2_map_note, DOWN, buff=0.12)
+        self.play(FadeIn(e2_dof_map), run_time=0.5)
+        self.wait(0.5)
+
+        e2_qlok_title = MathTex(
+            r"\mathbf{Q}_{\text{lok}}^{(2)} ="
+        ).scale(0.50).set_color(GREEN_A)
+        e2_qlok_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"3.771 \times 10^{-5} \\ -1.439 \times 10^{-5} \\"
+            r"1.333 \times 10^{-5} \\ 6.145 \times 10^{-6} \\"
+            r"1.423 \times 10^{-5} \\ -1.223 \times 10^{-5}"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+
+        e2_qlok_dof = VGroup(*[
+            MathTex(s).scale(0.26).set_color(GREY_A)
+            for s in [r"Q_7", r"Q_8", r"Q_9", r"Q_{10}", r"Q_3", r"Q_4"]
+        ])
+
+        e2_qlok_grp = VGroup(e2_qlok_title, e2_qlok_mat).arrange(RIGHT, buff=0.12)
+        e2_qlok_grp.next_to(e2_dof_map, DOWN, buff=0.30)
+
+        e2qt = e2_qlok_mat.get_top()[1]
+        e2qb = e2_qlok_mat.get_bottom()[1]
+        for i, lbl in enumerate(e2_qlok_dof):
+            y = interpolate(e2qt - 0.04, e2qb + 0.04, i / 5)
+            lbl.move_to([e2_qlok_title.get_left()[0] - 0.40, y, 0])
+
+        self.play(FadeIn(e2_qlok_grp), run_time=0.7)
+        self.play(LaggedStartMap(FadeIn, e2_qlok_dof, lag_ratio=0.03), run_time=0.4)
+
+        e2_qlok_box = SurroundingRectangle(e2_qlok_grp, color=GREEN_A, buff=0.08, stroke_width=2)
+        self.play(Create(e2_qlok_box), run_time=0.3)
+        self.wait(2.0)
+
+        # ================================================================
+        # E2 SCREEN 2: B matrix (CST — constant)
+        # ================================================================
+        self.play(
+            FadeOut(Group(e2d1_title, e2_map_note, e2_dof_map,
+                          e2_qlok_grp, e2_qlok_dof, e2_qlok_box)),
+            run_time=0.7,
+        )
+
+        e2d2_title = Text(
+            "Strain-Displacement Matrix B (Element II — CST)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e2d2_title), run_time=0.7)
+
+        e2_b_note = MathTex(
+            r"\boldsymbol{\varepsilon} = \mathbf{B} \cdot \mathbf{Q}_{\text{lok}}"
+            r"\qquad\text{— B is constant for CST (no } x,y \text{ dependence)}"
+        ).scale(0.38)
+        e2_b_note.next_to(e2d2_title, DOWN, buff=0.20)
+        self.play(FadeIn(e2_b_note), run_time=0.5)
+
+        e2_b_full = MathTex(
+            r"\mathbf{B}_2 = \frac{1}{2A}"
+            r"\begin{bmatrix}"
+            r"\frac{\partial N_i}{\partial x} & 0 & \frac{\partial N_j}{\partial x} & 0"
+            r"& \frac{\partial N_k}{\partial x} & 0 \\[4pt]"
+            r"0 & \frac{\partial N_i}{\partial y} & 0 & \frac{\partial N_j}{\partial y}"
+            r"& 0 & \frac{\partial N_k}{\partial y} \\[4pt]"
+            r"\frac{\partial N_i}{\partial y} & \frac{\partial N_i}{\partial x}"
+            r"& \frac{\partial N_j}{\partial y} & \frac{\partial N_j}{\partial x}"
+            r"& \frac{\partial N_k}{\partial y} & \frac{\partial N_k}{\partial x}"
+            r"\end{bmatrix}"
+        ).scale(0.32)
+        e2_b_full.next_to(e2_b_note, DOWN, buff=0.22)
+
+        e2_b_const = MathTex(
+            r"\text{For CST: } \mathbf{B} \text{ is the same at every point in the element}"
+        ).scale(0.36).set_color(YELLOW)
+        e2_b_const.next_to(e2_b_full, DOWN, buff=0.20)
+
+        self.play(FadeIn(e2_b_full), run_time=0.8)
+        self.play(FadeIn(e2_b_const), run_time=0.4)
+        self.wait(2.5)
+
+        # ================================================================
+        # E2 SCREEN 3: Strain — evaluate at center
+        # ================================================================
+        self.play(FadeOut(Group(e2d2_title, e2_b_note, e2_b_full, e2_b_const)), run_time=0.7)
+
+        e2d3_title = Text(
+            "Strain at the Center of Element II",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e2d3_title), run_time=0.7)
+
+        e2_center_note = MathTex(
+            r"\text{Center of triangle: } x = -\tfrac{2}{3},\; y = -\tfrac{4}{3}"
+            r"\quad\text{(relative to local origin at node } i \text{)}"
+        ).scale(0.38).set_color(YELLOW)
+        e2_center_note.next_to(e2d3_title, DOWN, buff=0.22)
+        self.play(Write(e2_center_note), run_time=0.5)
+
+        e2_cst_note = MathTex(
+            r"\text{But for CST: } \mathbf{B} \text{ is constant} \;\Rightarrow\;"
+            r"\text{strain is the same everywhere}"
+        ).scale(0.36).set_color(GREY_A)
+        e2_cst_note.next_to(e2_center_note, DOWN, buff=0.14)
+        self.play(FadeIn(e2_cst_note), run_time=0.4)
+        self.wait(0.5)
+
+        e2_b_center_label = MathTex(
+            r"\mathbf{B}_2\!\left(-\tfrac{2}{3},-\tfrac{4}{3}\right) ="
+        ).scale(0.40)
+        e2_b_center_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"0 & 0 & -\tfrac{1}{2} & 0 & \tfrac{1}{2} & 0 \\[3pt]"
+            r"0 & \tfrac{1}{2} & 0 & 0 & 0 & -\tfrac{1}{2} \\[3pt]"
+            r"\tfrac{1}{2} & 0 & 0 & -\tfrac{1}{2} & -\tfrac{1}{2} & \tfrac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.34)
+        e2_b_center_grp = VGroup(e2_b_center_label, e2_b_center_mat).arrange(RIGHT, buff=0.10)
+        e2_b_center_grp.next_to(e2_cst_note, DOWN, buff=0.22)
+
+        self.play(FadeIn(e2_b_center_grp), run_time=0.6)
+        self.wait(1.0)
+
+        e2_eps_label = MathTex(
+            r"\boldsymbol{\varepsilon}^{(2)} ="
+        ).scale(0.48)
+        e2_eps_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"4.466 \times 10^{-7} \\"
+            r"-1.080 \times 10^{-6} \\"
+            r"2.558 \times 10^{-6}"
+            r"\end{bmatrix}"
+        ).scale(0.48)
+        e2_eps_names = VGroup(*[
+            MathTex(s).scale(0.30).set_color(TEAL_A)
+            for s in [r"\varepsilon_x", r"\varepsilon_y", r"\gamma_{xy}"]
+        ])
+
+        e2_eps_grp = VGroup(e2_eps_label, e2_eps_vec).arrange(RIGHT, buff=0.10)
+        e2_eps_grp.next_to(e2_b_center_grp, DOWN, buff=0.25)
+
+        e2et = e2_eps_vec.get_top()[1]
+        e2eb = e2_eps_vec.get_bottom()[1]
+        for i, lbl in enumerate(e2_eps_names):
+            y = interpolate(e2et - 0.04, e2eb + 0.04, i / 2)
+            lbl.move_to([e2_eps_vec.get_right()[0] + 0.45, y, 0])
+
+        e2_eps_box = SurroundingRectangle(
+            VGroup(e2_eps_grp, e2_eps_names), color=TEAL_A, buff=0.10, stroke_width=2.5,
+        )
+
+        self.play(FadeIn(e2_eps_grp), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, e2_eps_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(e2_eps_box), run_time=0.3)
+        self.wait(2.5)
+
+        # ================================================================
+        # E2 SCREEN 4: D matrix → stress σ = D·ε
+        # ================================================================
+        self.play(
+            FadeOut(Group(e2d3_title, e2_center_note, e2_cst_note,
+                          e2_b_center_grp, e2_eps_grp, e2_eps_names, e2_eps_box)),
+            run_time=0.7,
+        )
+
+        e2d4_title = Text(
+            "Stress Tensor — Element II (center)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e2d4_title), run_time=0.7)
+
+        e2_sigma_formula = MathTex(
+            r"\boldsymbol{\sigma}^{(2)}",
+            r"= \mathbf{D} \cdot \boldsymbol{\varepsilon}^{(2)}"
+        ).scale(0.55)
+        e2_sigma_formula[0].set_color(ORANGE)
+        e2_sigma_formula.next_to(e2d4_title, DOWN, buff=0.22)
+        self.play(Write(e2_sigma_formula), run_time=0.5)
+
+        e2_d_note = MathTex(
+            r"\mathbf{D} \text{ — constitutive (elasticity) matrix}"
+        ).scale(0.36).set_color(GREY_A)
+        e2_d_note.next_to(e2_sigma_formula, DOWN, buff=0.12)
+        self.play(FadeIn(e2_d_note), run_time=0.3)
+
+        e2_d_label = MathTex(r"\mathbf{D} =").scale(0.48)
+        e2_d_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"85.5 & 29.9 & 0 \\"
+            r"29.9 & 85.5 & 0 \\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+            r"\;\text{GPa}"
+        ).scale(0.48)
+        e2_d_grp = VGroup(e2_d_label, e2_d_mat).arrange(RIGHT, buff=0.12)
+
+        e2_eps2_label = MathTex(r"\boldsymbol{\varepsilon}^{(2)} =").scale(0.48)
+        e2_eps2_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"4.466 \times 10^{-7} \\"
+            r"-1.080 \times 10^{-6} \\"
+            r"2.558 \times 10^{-6}"
+            r"\end{bmatrix}"
+        ).scale(0.44)
+        e2_eps2_grp = VGroup(e2_eps2_label, e2_eps2_vec).arrange(RIGHT, buff=0.10)
+
+        e2_de_row = VGroup(e2_d_grp, e2_eps2_grp).arrange(RIGHT, buff=0.80)
+        e2_de_row.next_to(e2_d_note, DOWN, buff=0.28)
+
+        self.play(FadeIn(e2_d_grp), run_time=0.6)
+        self.play(FadeIn(e2_eps2_grp), run_time=0.5)
+        self.wait(1.0)
+
+        e2_sigma_label = MathTex(
+            r"\boldsymbol{\sigma}^{(2)} = \mathbf{D} \cdot \boldsymbol{\varepsilon}^{(2)} ="
+        ).scale(0.50).set_color(ORANGE)
+        e2_sigma_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"0.005901 \\"
+            r"-0.07897 \\"
+            r"0.07111"
+            r"\end{bmatrix}"
+            r"\;\text{MPa}"
+        ).scale(0.50)
+        e2_sigma_names = VGroup(*[
+            MathTex(s).scale(0.32).set_color(ORANGE)
+            for s in [r"\sigma_x", r"\sigma_y", r"\tau_{xy}"]
+        ])
+
+        e2_sigma_grp = VGroup(e2_sigma_label, e2_sigma_vec).arrange(RIGHT, buff=0.12)
+        e2_sigma_grp.next_to(e2_de_row, DOWN, buff=0.30)
+
+        e2st = e2_sigma_vec.get_top()[1]
+        e2sb = e2_sigma_vec.get_bottom()[1]
+        for i, lbl in enumerate(e2_sigma_names):
+            y = interpolate(e2st - 0.04, e2sb + 0.04, i / 2)
+            lbl.move_to([e2_sigma_vec.get_right()[0] + 0.45, y, 0])
+
+        e2_sigma_box = SurroundingRectangle(
+            VGroup(e2_sigma_grp, e2_sigma_names), color=ORANGE, buff=0.12, stroke_width=2.5,
+        )
+
+        self.play(Write(e2_sigma_grp), run_time=0.8)
+        self.play(LaggedStartMap(FadeIn, e2_sigma_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(e2_sigma_box), run_time=0.4)
+
+        e2_unit_note = MathTex(
+            r"\text{Result in MPa (consistent units: kN, m, GPa)}"
+        ).scale(0.36).set_color(YELLOW)
+        e2_unit_note.next_to(e2_sigma_box, DOWN, buff=0.18)
+        self.play(FadeIn(e2_unit_note), run_time=0.4)
+
+        self.wait(3.0)
+
+        # ============================================================
+        # ELEMENT III — Back-substitution (triangle, CST)
+        # ============================================================
+
+        # --- E3-0) Clear ---
+        all_mobs = list(self.mobjects)
+        if all_mobs:
+            self.play(FadeOut(Group(*all_mobs)), run_time=1.0)
+        for m in list(self.mobjects):
+            self.remove(m)
+        self.wait(0.5)
+
+        # ================================================================
+        # E3 SCREEN 1: Title + local displacement vector
+        # ================================================================
+        e3d1_title = Text(
+            "Back-substitution to Element III (triangle)",
+            font_size=34,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e3d1_title), run_time=0.8)
+
+        e3_map_note = MathTex(
+            r"\text{Extract local DOFs from global } \mathbf{Q}"
+            r"\text{ using topology:}"
+        ).scale(0.40)
+        e3_map_note.next_to(e3d1_title, DOWN, buff=0.22)
+        self.play(FadeIn(e3_map_note), run_time=0.5)
+
+        e3_dof_map = MathTex(
+            r"i{=}2 \;\rightarrow\; Q_3,Q_4 \qquad "
+            r"j{=}3 \;\rightarrow\; Q_5,Q_6 \qquad "
+            r"k{=}4 \;\rightarrow\; Q_7,Q_8"
+        ).scale(0.34).set_color(GREY_A)
+        e3_dof_map.next_to(e3_map_note, DOWN, buff=0.12)
+        self.play(FadeIn(e3_dof_map), run_time=0.5)
+        self.wait(0.5)
+
+        e3_qlok_title = MathTex(
+            r"\mathbf{Q}_{\text{lok}}^{(3)} ="
+        ).scale(0.50).set_color(GREEN_A)
+        e3_qlok_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"1.423 \times 10^{-5} \\ -1.223 \times 10^{-5} \\"
+            r"3.847 \times 10^{-5} \\ -4.299 \times 10^{-5} \\"
+            r"3.771 \times 10^{-5} \\ -1.439 \times 10^{-5}"
+            r"\end{bmatrix}"
+        ).scale(0.42)
+
+        e3_qlok_dof = VGroup(*[
+            MathTex(s).scale(0.26).set_color(GREY_A)
+            for s in [r"Q_3", r"Q_4", r"Q_5", r"Q_6", r"Q_7", r"Q_8"]
+        ])
+
+        e3_qlok_grp = VGroup(e3_qlok_title, e3_qlok_mat).arrange(RIGHT, buff=0.12)
+        e3_qlok_grp.next_to(e3_dof_map, DOWN, buff=0.30)
+
+        e3qt = e3_qlok_mat.get_top()[1]
+        e3qb = e3_qlok_mat.get_bottom()[1]
+        for i, lbl in enumerate(e3_qlok_dof):
+            y = interpolate(e3qt - 0.04, e3qb + 0.04, i / 5)
+            lbl.move_to([e3_qlok_title.get_left()[0] - 0.40, y, 0])
+
+        self.play(FadeIn(e3_qlok_grp), run_time=0.7)
+        self.play(LaggedStartMap(FadeIn, e3_qlok_dof, lag_ratio=0.03), run_time=0.4)
+
+        e3_qlok_box = SurroundingRectangle(e3_qlok_grp, color=GREEN_A, buff=0.08, stroke_width=2)
+        self.play(Create(e3_qlok_box), run_time=0.3)
+        self.wait(2.0)
+
+        # ================================================================
+        # E3 SCREEN 2: B matrix (CST — constant)
+        # ================================================================
+        self.play(
+            FadeOut(Group(e3d1_title, e3_map_note, e3_dof_map,
+                          e3_qlok_grp, e3_qlok_dof, e3_qlok_box)),
+            run_time=0.7,
+        )
+
+        e3d2_title = Text(
+            "Strain-Displacement Matrix B (Element III — CST)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e3d2_title), run_time=0.7)
+
+        e3_b_note = MathTex(
+            r"\boldsymbol{\varepsilon} = \mathbf{B} \cdot \mathbf{Q}_{\text{lok}}"
+            r"\qquad\text{— B is constant for CST (no } x,y \text{ dependence)}"
+        ).scale(0.38)
+        e3_b_note.next_to(e3d2_title, DOWN, buff=0.20)
+        self.play(FadeIn(e3_b_note), run_time=0.5)
+
+        e3_b_full = MathTex(
+            r"\mathbf{B}_3 = \frac{1}{2A}"
+            r"\begin{bmatrix}"
+            r"\frac{\partial N_i}{\partial x} & 0 & \frac{\partial N_j}{\partial x} & 0"
+            r"& \frac{\partial N_k}{\partial x} & 0 \\[4pt]"
+            r"0 & \frac{\partial N_i}{\partial y} & 0 & \frac{\partial N_j}{\partial y}"
+            r"& 0 & \frac{\partial N_k}{\partial y} \\[4pt]"
+            r"\frac{\partial N_i}{\partial y} & \frac{\partial N_i}{\partial x}"
+            r"& \frac{\partial N_j}{\partial y} & \frac{\partial N_j}{\partial x}"
+            r"& \frac{\partial N_k}{\partial y} & \frac{\partial N_k}{\partial x}"
+            r"\end{bmatrix}"
+        ).scale(0.32)
+        e3_b_full.next_to(e3_b_note, DOWN, buff=0.22)
+
+        e3_b_const = MathTex(
+            r"\text{For CST: } \mathbf{B} \text{ is the same at every point in the element}"
+        ).scale(0.36).set_color(YELLOW)
+        e3_b_const.next_to(e3_b_full, DOWN, buff=0.20)
+
+        self.play(FadeIn(e3_b_full), run_time=0.8)
+        self.play(FadeIn(e3_b_const), run_time=0.4)
+        self.wait(2.5)
+
+        # ================================================================
+        # E3 SCREEN 3: Strain — evaluate at center
+        # ================================================================
+        self.play(FadeOut(Group(e3d2_title, e3_b_note, e3_b_full, e3_b_const)), run_time=0.7)
+
+        e3d3_title = Text(
+            "Strain at the Center of Element III",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e3d3_title), run_time=0.7)
+
+        e3_center_note = MathTex(
+            r"\text{Center of triangle: } x = \tfrac{2}{3},\; y = \tfrac{4}{3}"
+            r"\quad\text{(relative to local origin at node } i \text{)}"
+        ).scale(0.38).set_color(YELLOW)
+        e3_center_note.next_to(e3d3_title, DOWN, buff=0.22)
+        self.play(Write(e3_center_note), run_time=0.5)
+
+        e3_cst_note = MathTex(
+            r"\text{But for CST: } \mathbf{B} \text{ is constant} \;\Rightarrow\;"
+            r"\text{strain is the same everywhere}"
+        ).scale(0.36).set_color(GREY_A)
+        e3_cst_note.next_to(e3_center_note, DOWN, buff=0.14)
+        self.play(FadeIn(e3_cst_note), run_time=0.4)
+        self.wait(0.5)
+
+        e3_b_center_label = MathTex(
+            r"\mathbf{B}_3\!\left(\tfrac{2}{3},\tfrac{4}{3}\right) ="
+        ).scale(0.40)
+        e3_b_center_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"0 & 0 & \tfrac{1}{2} & 0 & -\tfrac{1}{2} & 0 \\[3pt]"
+            r"0 & -\tfrac{1}{2} & 0 & 0 & 0 & \tfrac{1}{2} \\[3pt]"
+            r"-\tfrac{1}{2} & 0 & 0 & \tfrac{1}{2} & \tfrac{1}{2} & -\tfrac{1}{2}"
+            r"\end{bmatrix}"
+        ).scale(0.34)
+        e3_b_center_grp = VGroup(e3_b_center_label, e3_b_center_mat).arrange(RIGHT, buff=0.10)
+        e3_b_center_grp.next_to(e3_cst_note, DOWN, buff=0.22)
+
+        self.play(FadeIn(e3_b_center_grp), run_time=0.6)
+        self.wait(1.0)
+
+        e3_eps_label = MathTex(
+            r"\boldsymbol{\varepsilon}^{(3)} ="
+        ).scale(0.48)
+        e3_eps_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"3.776 \times 10^{-7} \\"
+            r"-1.080 \times 10^{-6} \\"
+            r"-2.558 \times 10^{-6}"
+            r"\end{bmatrix}"
+        ).scale(0.48)
+        e3_eps_names = VGroup(*[
+            MathTex(s).scale(0.30).set_color(TEAL_A)
+            for s in [r"\varepsilon_x", r"\varepsilon_y", r"\gamma_{xy}"]
+        ])
+
+        e3_eps_grp = VGroup(e3_eps_label, e3_eps_vec).arrange(RIGHT, buff=0.10)
+        e3_eps_grp.next_to(e3_b_center_grp, DOWN, buff=0.25)
+
+        e3et = e3_eps_vec.get_top()[1]
+        e3eb = e3_eps_vec.get_bottom()[1]
+        for i, lbl in enumerate(e3_eps_names):
+            y = interpolate(e3et - 0.04, e3eb + 0.04, i / 2)
+            lbl.move_to([e3_eps_vec.get_right()[0] + 0.45, y, 0])
+
+        e3_eps_box = SurroundingRectangle(
+            VGroup(e3_eps_grp, e3_eps_names), color=TEAL_A, buff=0.10, stroke_width=2.5,
+        )
+
+        self.play(FadeIn(e3_eps_grp), run_time=0.6)
+        self.play(LaggedStartMap(FadeIn, e3_eps_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(e3_eps_box), run_time=0.3)
+        self.wait(2.5)
+
+        # ================================================================
+        # E3 SCREEN 4: D matrix → stress σ = D·ε
+        # ================================================================
+        self.play(
+            FadeOut(Group(e3d3_title, e3_center_note, e3_cst_note,
+                          e3_b_center_grp, e3_eps_grp, e3_eps_names, e3_eps_box)),
+            run_time=0.7,
+        )
+
+        e3d4_title = Text(
+            "Stress Tensor — Element III (center)",
+            font_size=32,
+        ).to_edge(UP, buff=0.30)
+        self.play(Write(e3d4_title), run_time=0.7)
+
+        e3_sigma_formula = MathTex(
+            r"\boldsymbol{\sigma}^{(3)}",
+            r"= \mathbf{D} \cdot \boldsymbol{\varepsilon}^{(3)}"
+        ).scale(0.55)
+        e3_sigma_formula[0].set_color(ORANGE)
+        e3_sigma_formula.next_to(e3d4_title, DOWN, buff=0.22)
+        self.play(Write(e3_sigma_formula), run_time=0.5)
+
+        e3_d_note = MathTex(
+            r"\mathbf{D} \text{ — constitutive (elasticity) matrix}"
+        ).scale(0.36).set_color(GREY_A)
+        e3_d_note.next_to(e3_sigma_formula, DOWN, buff=0.12)
+        self.play(FadeIn(e3_d_note), run_time=0.3)
+
+        e3_d_label = MathTex(r"\mathbf{D} =").scale(0.48)
+        e3_d_mat = MathTex(
+            r"\begin{bmatrix}"
+            r"85.5 & 29.9 & 0 \\"
+            r"29.9 & 85.5 & 0 \\"
+            r"0 & 0 & 27.8"
+            r"\end{bmatrix}"
+            r"\;\text{GPa}"
+        ).scale(0.48)
+        e3_d_grp = VGroup(e3_d_label, e3_d_mat).arrange(RIGHT, buff=0.12)
+
+        e3_eps2_label = MathTex(r"\boldsymbol{\varepsilon}^{(3)} =").scale(0.48)
+        e3_eps2_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"3.776 \times 10^{-7} \\"
+            r"-1.080 \times 10^{-6} \\"
+            r"-2.558 \times 10^{-6}"
+            r"\end{bmatrix}"
+        ).scale(0.44)
+        e3_eps2_grp = VGroup(e3_eps2_label, e3_eps2_vec).arrange(RIGHT, buff=0.10)
+
+        e3_de_row = VGroup(e3_d_grp, e3_eps2_grp).arrange(RIGHT, buff=0.80)
+        e3_de_row.next_to(e3_d_note, DOWN, buff=0.28)
+
+        self.play(FadeIn(e3_d_grp), run_time=0.6)
+        self.play(FadeIn(e3_eps2_grp), run_time=0.5)
+        self.wait(1.0)
+
+        e3_sigma_label = MathTex(
+            r"\boldsymbol{\sigma}^{(3)} = \mathbf{D} \cdot \boldsymbol{\varepsilon}^{(3)} ="
+        ).scale(0.50).set_color(ORANGE)
+        e3_sigma_vec = MathTex(
+            r"\begin{bmatrix}"
+            r"-1.688 \times 10^{-6} \\"
+            r"-0.08103 \\"
+            r"-0.07111"
+            r"\end{bmatrix}"
+            r"\;\text{MPa}"
+        ).scale(0.50)
+        e3_sigma_names = VGroup(*[
+            MathTex(s).scale(0.32).set_color(ORANGE)
+            for s in [r"\sigma_x", r"\sigma_y", r"\tau_{xy}"]
+        ])
+
+        e3_sigma_grp = VGroup(e3_sigma_label, e3_sigma_vec).arrange(RIGHT, buff=0.12)
+        e3_sigma_grp.next_to(e3_de_row, DOWN, buff=0.30)
+
+        e3st = e3_sigma_vec.get_top()[1]
+        e3sb = e3_sigma_vec.get_bottom()[1]
+        for i, lbl in enumerate(e3_sigma_names):
+            y = interpolate(e3st - 0.04, e3sb + 0.04, i / 2)
+            lbl.move_to([e3_sigma_vec.get_right()[0] + 0.45, y, 0])
+
+        e3_sigma_box = SurroundingRectangle(
+            VGroup(e3_sigma_grp, e3_sigma_names), color=ORANGE, buff=0.12, stroke_width=2.5,
+        )
+
+        self.play(Write(e3_sigma_grp), run_time=0.8)
+        self.play(LaggedStartMap(FadeIn, e3_sigma_names, lag_ratio=0.10), run_time=0.4)
+        self.play(Create(e3_sigma_box), run_time=0.4)
+
+        e3_unit_note = MathTex(
+            r"\text{Result in MPa (consistent units: kN, m, GPa)}"
+        ).scale(0.36).set_color(YELLOW)
+        e3_unit_note.next_to(e3_sigma_box, DOWN, buff=0.18)
+        self.play(FadeIn(e3_unit_note), run_time=0.4)
+
+        self.wait(3.0)
+
 
 if __name__ == "__main__":
     import sys
