@@ -149,3 +149,5 @@ dmypy.json
 .vscode/
 
 whole.json
+# notatki robocze - nie trafiaja do repo
+WYJASNIENIA/
