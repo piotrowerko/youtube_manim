@@ -151,3 +151,4 @@ dmypy.json
 whole.json
 # notatki robocze - nie trafiaja do repo
 WYJASNIENIA/
+voice_coverage/
