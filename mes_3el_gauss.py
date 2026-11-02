@@ -5,22 +5,41 @@ import numpy as np
 class GaussIntegrationScene(Scene):
     """Show Gauss quadrature points for the 3 FEM elements vs. analytic integration."""
 
+    # Voice-over timing (see GaussIntegrationSceneVoiced): seconds from the start
+    # of the scene; without cues the scene keeps its original pacing.
+    CUES = {}
+    SUM_AFTER_POINTS = False     # show the quadrature sum once the points are there
+
+    def cue(self, name):
+        if name in self.CUES:
+            dt = self.CUES[name] - self.renderer.time
+            if dt > 1e-3:
+                self.wait(dt)
+            elif dt < -0.05:
+                print(f"cue {name} late by {-dt:.2f} s")
+
+    def hold(self, duration):
+        if not self.CUES:
+            self.wait(duration)
+
     def construct(self):
         # =====================================================================
         # Title
         # =====================================================================
         title = Text("Gauss Quadrature vs. Analytic Integration", font_size=38)
         title.to_edge(UP, buff=0.35)
+        self.cue("title")
         self.play(Write(title), run_time=0.8)
-        self.wait(0.5)
+        self.hold(0.5)
 
         subtitle = MathTex(
             r"\int_\Omega f \, d\Omega \;\approx\;"
             r"\sum_{i=1}^{n} w_i \, f(\xi_i, \eta_i)"
         ).scale(0.55)
         subtitle.next_to(title, DOWN, buff=0.25)
-        self.play(FadeIn(subtitle), run_time=0.6)
-        self.wait(1.0)
+        if not self.SUM_AFTER_POINTS:
+            self.play(FadeIn(subtitle), run_time=0.6)
+            self.hold(1.0)
 
         # =====================================================================
         # Element geometries (local coordinates)
@@ -122,6 +141,7 @@ class GaussIntegrationScene(Scene):
         # =====================================================================
         # Animate elements appearing
         # =====================================================================
+        self.cue("points")
         for grp in [e1_group, e2_group, e3_group]:
             poly = grp[0]
             rest = VGroup(*grp[1:3])
@@ -137,9 +157,12 @@ class GaussIntegrationScene(Scene):
                 LaggedStartMap(FadeIn, lbls, lag_ratio=0.10),
                 run_time=0.4,
             )
-            self.wait(0.3)
+            self.hold(0.3)
 
-        self.wait(1.0)
+        self.hold(1.0)
+        if self.SUM_AFTER_POINTS:
+            self.cue("sum")
+            self.play(FadeIn(subtitle), run_time=0.6)
 
         # =====================================================================
         # Formulas below each element
@@ -177,8 +200,9 @@ class GaussIntegrationScene(Scene):
         f3 = VGroup(f3_analytic, f3_approx, f3_note).arrange(DOWN, buff=0.08)
         f3.next_to(e3_type, DOWN, buff=0.15)
 
+        self.cue("formulas")
         self.play(FadeIn(f1), FadeIn(f2), FadeIn(f3), run_time=0.8)
-        self.wait(2.0)
+        self.hold(2.0)
 
         # =====================================================================
         # Key insight box at the bottom
@@ -193,10 +217,31 @@ class GaussIntegrationScene(Scene):
         insight_grp = VGroup(insight, insight_box)
         insight_grp.to_edge(DOWN, buff=0.25)
 
+        self.cue("insight")
         self.play(Write(insight), run_time=0.8)
         self.play(Create(insight_box), run_time=0.4)
 
-        self.wait(3.0)
+        if self.CUES:
+            self.wait(max(0.0, self.END - self.renderer.time))
+        else:
+            self.wait(3.0)
+
+
+# Recording 14 ("K1 i wstęp do Gaussa"), uncut times in seconds; the scene
+# starts at T0 and lasts until the cut before "Przyjrzymy się temu ... bliżej".
+T0_14 = 323.3
+
+
+class GaussIntegrationSceneVoiced(GaussIntegrationScene):
+    SUM_AFTER_POINTS = True
+    END = 374.35 - T0_14
+    CUES = {k: v - T0_14 for k, v in {
+        "title": 323.5,      # "W produkcyjnych programach MES"
+        "points": 336.4,     # "tylko w kilku starannie wybranych punktach elementu"
+        "sum": 340.9,        # "mnoży każdą z nich przez odpowiednią wagę i wszystko sumuje"
+        "formulas": 349.5,   # "To tak zwane całkowanie numeryczne metodą punktów Gaussa"
+        "insight": 362.4,    # "ten sposób już nie jest nawet przybliżeniem"
+    }.items()}
 
 
 if __name__ == "__main__":

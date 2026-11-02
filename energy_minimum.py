@@ -314,9 +314,10 @@ class EnergyMinimumScene(Scene):
 
         self.cue("deriv")
         self.play(Write(deriv), run_time=0.8)
-        self.cue("main_eq")
-        self.play(FadeIn(arrow), run_time=0.3)
-        self.play(Write(main_eq), run_time=1.0)
+        if not self.derivation(pi_u, sub_row, pi_q, arrow, main_eq):
+            self.cue("main_eq")
+            self.play(FadeIn(arrow), run_time=0.3)
+            self.play(Write(main_eq), run_time=1.0)
         self.cue("eq_box")
         self.play(Create(eq_box), run_time=0.6)
         if self.BRACES_LAST:
@@ -324,39 +325,37 @@ class EnergyMinimumScene(Scene):
         self.pause(3.0)
         self.ending()
 
+    def derivation(self, pi_u, sub_row, pi_q, arrow, main_eq):
+        """Steps between the derivative and the main equation - none in the
+        base scene. Returns True when the main equation has been shown."""
+        return False
+
     def ending(self):
         """Hold until the end of the voice-over - nothing in the base scene."""
 
 
-# Voice-over recordings 4-8 play back to back under the scene. For every
-# recording: the kept pieces (first, last source frame of the 30 fps project),
-# as cut on track A2, so the scene ends exactly with recording 8.
-REC_KEPT = {4: [(0, 3484)], 5: [(0, 2898)],
-            6: [(0, 2593), (2692, 2831)],
-            7: [(86, 981), (1039, 1435), (1478, 3794)],
-            8: [(1272, 5872)]}
-
-
-def rec_len(n):
-    return sum(b - a + 1 for a, b in REC_KEPT[n])
-
-
-def rec_start(n):
-    """Start of recording n in seconds from the start of the scene."""
-    return sum(rec_len(k) for k in REC_KEPT if k < n) / 30
+# Voice-over recordings play back to back under the scene: the kept pieces in
+# playback order (recording, first and last source frame of the 30 fps project),
+# as cut on track A2. Recording 8A (the derivation from dPi/dQ = 0 to the main
+# equation) is inserted into recording 8 after "... upraszcza się jeszcze bardziej".
+PIECES = [(4, 0, 3484), (5, 0, 2898),
+          (6, 0, 2593), (6, 2692, 2831),
+          (7, 86, 981), (7, 1039, 1435), (7, 1478, 3794),
+          (8, 1272, 3311), ("8A", 78, 5484), (8, 3312, 5872)]
 
 
 def at(n, t):
     """Moment t (s, of the uncut recording n) in scene time; a moment that
     was cut out snaps to the start of the next kept piece."""
     f, acc = t * 30, 0
-    for a, b in REC_KEPT[n]:
-        if f < a:
-            break
-        if f <= b + 1:
-            return rec_start(n) + (acc + f - a) / 30
+    for r, a, b in PIECES:
+        if r == n:
+            if f < a:
+                return acc / 30
+            if f <= b + 1:
+                return (acc + f - a) / 30
         acc += b - a + 1
-    return rec_start(n) + acc / 30
+    raise ValueError((n, t))
 
 
 class EnergyMinimumSceneVoiced(EnergyMinimumScene):
@@ -366,7 +365,7 @@ class EnergyMinimumSceneVoiced(EnergyMinimumScene):
     between them the screen simply holds.
     """
 
-    TOTAL = sum(rec_len(n) for n in REC_KEPT) / 30
+    TOTAL = sum(b - a + 1 for _, a, b in PIECES) / 30
     BRACES_LAST = True
 
     CUES = {
@@ -393,8 +392,208 @@ class EnergyMinimumSceneVoiced(EnergyMinimumScene):
         "eq_box": at(8, 115.8),   # "macierzowy uklad rownan"
         "braces": at(8, 117.9),   # "Te wszystkie literki K, Q, P"
     }
+    # recording 8A: from dPi/dQ = 0 to the main equation, step by step
+    CUES.update({
+        "ins": at("8A", 3.0),       # "Po zróżniczkowaniu dostajemy"
+        "A": at("8A", 6.0),         # "następujące równanie"
+        "A_lhs": at("8A", 8.8),     # "po lewej stronie jest całka po powierzchni"
+        "A_B": at("8A", 18.5),      # "czyli macierz B"
+        "A_D": at("8A", 23.1),      # "macierzą sprężystości D"
+        "A_rhs": at("8A", 30.7),    # "suma całek odpowiadających za obciążenia"
+        "A_qv": at("8A", 35.2),     # "Pierwsza to jest obciążenie ... w całym ciele"
+        "A_qs": at("8A", 54.2),     # "A ostatnia całka ... na brzegu ciała"
+        "B": at("8A", 62.8),        # "tę ostatnią całkę możemy rozpisać"
+        "B_known": at("8A", 67.6),  # "znane obciążenia na brzegu"
+        "B_unknown": at("8A", 70.8),  # "a druga nieznane siły"
+        "B_R": at("8A", 78.1),      # "reakcje oznaczone literą R"
+        "B_eq": at("8A", 85.0),     # "mamy następujące równanie"
+        "C_fem": at("8A", 90.8),    # "tu wchodzi MES"
+        "C": at("8A", 101.6),       # "Całka po całym ciele staje się sumą"
+        "C_T": at("8A", 113.9),     # "macierze T"
+        "D": at("8A", 137.5),       # "zastąpić symbolami"
+        "D_K": at("8A", 140.6),     # "symbolem K"
+        "D_P": at("8A", 146.9),     # "symbolem P"
+        "D_m": at("8A", 150.9),     # "Takich składników jest tyle"
+        "D_R": at("8A", 157.6),     # "zostaje jeszcze R"
+        "glob": at("8A", 165.5),    # "Globalna macierz sztywności"
+        "g_Q": at("8A", 174.1),     # "Razy wektor przemieszczeń"
+        "g_P": at("8A", 178.1),     # "globalnemu wektorowi obciążeń"
+        "g_R": at("8A", 181.3),     # "plus wektorowi reakcji"
+        "restore": at(8, 110.6),    # back to recording 8: "Otrzymujemy układ równań"
+    })
     RT = {"axes": 0.6, "graph": 1.0, "rects": 1.0, "park": 1.0, "pi_u": 2.0,
           "pi_q": 3.0}
+
+    def derivation(self, pi_u, sub_row, pi_q, arrow, main_eq):
+        C_R = RED_B
+        Y1, Y2, Y3 = 1.25, 0.0, -1.3
+
+        def tex(*parts, size=33):
+            return MathTex(*parts, font_size=size)
+
+        # ---- A: the derivative written out ----
+        eq_a = tex(
+            r"\Big(\int_{A}\mathbf{B}^{T}\mathbf{D}\,\mathbf{B}\,h\,dA\Big)",   # 0
+            r"\mathbf{Q}", r"\;=\;",                                           # 1 2
+            r"\int_{A}\mathbf{N}^{T}\mathbf{q}_{V}\,h\,dA",                    # 3
+            r"\;+\;",                                                          # 4
+            r"\int_{\Gamma}\mathbf{N}^{T}\mathbf{q}_{S}\,h\,ds",               # 5
+        )
+        eq_a[0].set_color(C_K)
+        eq_a[3].set_color(C_P)
+        eq_a[5].set_color(C_P)
+        eq_a.move_to([0, Y1, 0])
+
+        self.cue("ins")
+        self.play(FadeOut(pi_u), FadeOut(sub_row),
+                  pi_q.animate.move_to([0.0, 2.45, 0]), run_time=1.0)
+        self.cue("A")
+        self.play(Write(eq_a), run_time=1.5)
+        self.cue("A_lhs")
+        self.play(Circumscribe(eq_a[0], color=C_K, buff=0.08), run_time=1.5)
+        # glyphs of ( int_A B^T D B h dA ): 3, 4 = B^T, 5 = D, 6 = B
+        self.cue("A_B")
+        self.play(Indicate(VGroup(*eq_a[0][3:5], eq_a[0][6]), color=C_N), run_time=1.2)
+        self.cue("A_D")
+        self.play(Indicate(eq_a[0][5], color=WHITE), run_time=1.2)
+        self.cue("A_rhs")
+        self.play(Circumscribe(VGroup(*eq_a[3:6]), color=C_P, buff=0.08), run_time=1.5)
+        self.cue("A_qv")
+        self.play(Indicate(eq_a[3], color=C_P, scale_factor=1.15), run_time=1.2)
+        self.cue("A_qs")
+        self.play(Indicate(eq_a[5], color=C_P, scale_factor=1.15), run_time=1.2)
+
+        # ---- B: the boundary splits into a loaded and a supported part ----
+        eq_b = tex(
+            r"\int_{\Gamma}\mathbf{N}^{T}\mathbf{q}_{S}\,h\,ds",               # 0
+            r"\;=\;",                                                          # 1
+            r"\int_{\Gamma_q}\mathbf{N}^{T}\mathbf{q}_{S}\,h\,ds",             # 2
+            r"\;+\;",                                                          # 3
+            r"\int_{\Gamma_u}\mathbf{N}^{T}\mathbf{q}_{S}\,h\,ds",             # 4
+        )
+        eq_b[0].set_color(C_P)
+        eq_b[2].set_color(C_P)
+        eq_b.move_to([0, Y2 + 0.15, 0])
+        lbl_q = Text("known load", font_size=20, color=C_P).next_to(eq_b[2], DOWN, buff=0.18)
+        lbl_u = Text("support forces", font_size=20, color=C_R).next_to(eq_b[4], DOWN, buff=0.18)
+        br_r = Brace(eq_b[4], DOWN, buff=0.08, color=C_R)
+        r_sym = MathTex(r"\mathbf{R}", font_size=34, color=C_R).next_to(br_r, DOWN, buff=0.08)
+
+        self.cue("B")
+        self.play(TransformFromCopy(eq_a[5], eq_b[0]), run_time=0.8)
+        self.play(Write(VGroup(*eq_b[1:])), run_time=1.2)
+        self.cue("B_known")
+        self.play(Indicate(eq_b[2], color=C_P, scale_factor=1.12), FadeIn(lbl_q), run_time=1.0)
+        self.cue("B_unknown")
+        self.play(eq_b[4].animate.set_color(C_R), FadeIn(lbl_u), run_time=1.0)
+        self.cue("B_R")
+        self.play(FadeOut(lbl_u), GrowFromCenter(br_r), FadeIn(r_sym, shift=UP * 0.1),
+                  run_time=0.9)
+
+        eq_ar = tex(
+            r"\Big(\int_{A}\mathbf{B}^{T}\mathbf{D}\,\mathbf{B}\,h\,dA\Big)",
+            r"\mathbf{Q}", r"\;=\;",
+            r"\int_{A}\mathbf{N}^{T}\mathbf{q}_{V}\,h\,dA",
+            r"\;+\;",
+            r"\int_{\Gamma_q}\mathbf{N}^{T}\mathbf{q}_{S}\,h\,ds",
+            r"\;+\;", r"\mathbf{R}",
+        )
+        eq_ar[0].set_color(C_K)
+        eq_ar[3].set_color(C_P)
+        eq_ar[5].set_color(C_P)
+        eq_ar[7].set_color(C_R)
+        eq_ar.move_to([0, Y1, 0])
+        self.cue("B_eq")
+        self.play(
+            ReplacementTransform(VGroup(*eq_a[:5]), VGroup(*eq_ar[:5])),
+            ReplacementTransform(eq_a[5], eq_ar[5]),
+            FadeIn(eq_ar[6]),
+            ReplacementTransform(r_sym, eq_ar[7]),
+            FadeOut(VGroup(eq_b, br_r, lbl_q)),
+            run_time=1.4,
+        )
+
+        # ---- C: finite elements - the integral over the body is a sum over elements ----
+        fem = Text("FEM: body  =  sum of elements", font_size=24, color=YELLOW)
+        fem.move_to([0, Y2 + 0.55, 0])
+        eq_c = tex(
+            r"\Big(\sum_{e}",                                                  # 0
+            r"\mathbf{T}_e^{T}",                                               # 1
+            r"\Big(\int_{A_e}\mathbf{B}_e^{T}\mathbf{D}\,\mathbf{B}_e\,h\,dA\Big)",  # 2
+            r"\mathbf{T}_e",                                                   # 3
+            r"\Big)\,\mathbf{Q}", r"\;=\;",                                    # 4 5
+            r"\sum_{e}",                                                       # 6
+            r"\mathbf{T}_e^{T}",                                               # 7
+            r"\Big(\int_{A_e}\mathbf{N}_e^{T}\mathbf{q}_{V}\,h\,dA"
+            r"+\int_{\Gamma_{q,e}}\mathbf{N}_e^{T}\mathbf{q}_{S}\,h\,ds\Big)",  # 8
+            r"\;+\;", r"\mathbf{R}",                                           # 9 10
+            size=30,
+        )
+        eq_c[2].set_color(C_K)
+        eq_c[8].set_color(C_P)
+        eq_c[10].set_color(C_R)
+        eq_c.move_to([0, Y2 - 0.2, 0])
+
+        self.cue("C_fem")
+        self.play(FadeIn(fem, shift=DOWN * 0.15), run_time=0.7)
+        self.cue("C")
+        self.play(Write(eq_c), run_time=2.0)
+        self.cue("C_T")
+        self.play(*[Indicate(eq_c[i], color=YELLOW, scale_factor=1.3) for i in (1, 3, 7)],
+                  run_time=1.4)
+
+        # ---- D: element integrals get names, K_e and P_e ----
+        eq_d = tex(
+            r"\big(",                                                          # 0
+            r"\mathbf{T}_1^{T}\mathbf{K}_1\mathbf{T}_1",                       # 1
+            r"+",                                                              # 2
+            r"\mathbf{T}_2^{T}\mathbf{K}_2\mathbf{T}_2",                       # 3
+            r"+\dots+",                                                        # 4
+            r"\mathbf{T}_m^{T}\mathbf{K}_m\mathbf{T}_m",                       # 5
+            r"\big)\,\mathbf{Q}", r"\;=\;",                                    # 6 7
+            r"\mathbf{T}_1^{T}\mathbf{P}_1",                                   # 8
+            r"+",                                                              # 9
+            r"\mathbf{T}_2^{T}\mathbf{P}_2",                                   # 10
+            r"+\dots+",                                                        # 11
+            r"\mathbf{T}_m^{T}\mathbf{P}_m",                                   # 12
+            r"\;+\;", r"\mathbf{R}",                                           # 13 14
+            size=33,
+        )
+        k_parts = VGroup(eq_d[1], eq_d[3], eq_d[5])
+        p_parts = VGroup(eq_d[8], eq_d[10], eq_d[12])
+        k_parts.set_color(C_K)
+        p_parts.set_color(C_P)
+        eq_d[14].set_color(C_R)
+        eq_d.move_to([0, Y3, 0])
+        self.cue("D")
+        self.play(FadeOut(fem), Write(eq_d), run_time=1.8)
+        self.cue("D_K")
+        self.play(Indicate(k_parts, color=C_K, scale_factor=1.15), run_time=1.2)
+        self.cue("D_P")
+        self.play(Indicate(p_parts, color=C_P, scale_factor=1.15), run_time=1.2)
+        self.cue("D_m")
+        self.play(Indicate(VGroup(eq_d[4], eq_d[5], eq_d[11], eq_d[12]),
+                           color=YELLOW, scale_factor=1.15), run_time=1.4)
+        self.cue("D_R")
+        self.play(Indicate(eq_d[14], color=C_R, scale_factor=1.4), run_time=1.0)
+
+        # ---- the main equation, already in its place at the bottom ----
+        self.cue("glob")
+        self.play(FadeIn(arrow), run_time=0.3)
+        self.play(Write(main_eq), run_time=1.0)
+        self.cue("g_Q")
+        self.play(Indicate(main_eq[2], scale_factor=1.3), run_time=1.0)
+        self.cue("g_P")
+        self.play(Indicate(main_eq[4], color=C_P, scale_factor=1.3), run_time=1.0)
+        self.cue("g_R")
+        self.play(Indicate(main_eq[6], color=C_R, scale_factor=1.3), run_time=1.0)
+
+        # ---- back to recording 8: the two forms of the functional return ----
+        self.cue("restore")
+        self.play(FadeOut(VGroup(eq_ar, eq_c, eq_d)),
+                  pi_q.animate.move_to([0.0, -0.60, 0]),
+                  FadeIn(pi_u), FadeIn(sub_row), run_time=1.2)
+        return True
 
     def ending(self):
         dt = self.TOTAL - self.renderer.time
